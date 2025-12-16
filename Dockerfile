@@ -15,6 +15,12 @@ RUN apt-get update && apt-get install -y \
 # Enable Apache modules
 RUN a2enmod rewrite headers
 
+# Ensure only one MPM is enabled (avoid "More than one MPM loaded").
+# Prefer `mpm_prefork` which is compatible with mod_php provided by the
+# `php:*-apache` base image. Disable other MPMs if present.
+RUN a2dismod mpm_event mpm_worker || true \
+    && a2enmod mpm_prefork || true
+
 # Create log directory and set permissions
 RUN mkdir -p /var/log/php \
     && chown -R www-data:www-data /var/log/php \
@@ -35,9 +41,9 @@ RUN chown -R www-data:www-data /var/www/html \
 
 # Create entrypoint script
 RUN echo '#!/bin/bash\n\
-chmod -R 777 /var/www/html\n\
-chown -R www-data:www-data /var/www/html\n\
-apache2-foreground' > /usr/local/bin/docker-entrypoint.sh \
+    chmod -R 777 /var/www/html\n\
+    chown -R www-data:www-data /var/www/html\n\
+    apache2-foreground' > /usr/local/bin/docker-entrypoint.sh \
     && chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Configure PHP
