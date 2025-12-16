@@ -110,72 +110,172 @@ if ($handle = opendir($pluginDir)) {
 }
 sort($plugins);
 
-// Handle AJAX save request
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save') {
+// Handle AJAX POST actions: save mappings, add_column, drop_column
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
-    
-    $mappings = isset($_POST['mappings']) ? $_POST['mappings'] : array();
-    $fieldTypes = isset($_POST['fieldTypes']) ? $_POST['fieldTypes'] : array();
-    $fieldRequired = isset($_POST['fieldRequired']) ? $_POST['fieldRequired'] : array();
-    $fieldOptions = isset($_POST['fieldOptions']) ? $_POST['fieldOptions'] : array();
-    
-    $jsonMappings = json_encode($mappings);
-    $jsonFieldTypes = json_encode($fieldTypes);
-    $jsonFieldRequired = json_encode($fieldRequired);
-    $jsonFieldOptions = json_encode($fieldOptions);
-    
-    // Build dynamic UPDATE depending on which columns exist
-    $updateParts = array();
-    $bindParams = array();
-    $bindTypes = '';
+    $action = $_POST['action'];
 
-    // plugin is always present
-    $updateParts[] = 'plugin = ?';
-    $bindTypes .= 's';
-    $bindParams[] = $jsonMappings;
+    if ($action === 'save') {
+        $mappings = isset($_POST['mappings']) ? $_POST['mappings'] : array();
+        $fieldTypes = isset($_POST['fieldTypes']) ? $_POST['fieldTypes'] : array();
+        $fieldRequired = isset($_POST['fieldRequired']) ? $_POST['fieldRequired'] : array();
+        $fieldOptions = isset($_POST['fieldOptions']) ? $_POST['fieldOptions'] : array();
 
-    if ($hasFieldTypes) {
-        $updateParts[] = 'field_types = ?';
+        $jsonMappings = json_encode($mappings);
+        $jsonFieldTypes = json_encode($fieldTypes);
+        $jsonFieldRequired = json_encode($fieldRequired);
+        $jsonFieldOptions = json_encode($fieldOptions);
+
+        // Build dynamic UPDATE depending on which columns exist
+        $updateParts = array();
+        $bindParams = array();
+        $bindTypes = '';
+
+        // plugin is always present
+        $updateParts[] = 'plugin = ?';
         $bindTypes .= 's';
-        $bindParams[] = $jsonFieldTypes;
-    }
+        $bindParams[] = $jsonMappings;
 
-    if ($hasFieldRequired) {
-        $updateParts[] = 'field_required = ?';
-        $bindTypes .= 's';
-        $bindParams[] = $jsonFieldRequired;
-    }
+        if ($hasFieldTypes) {
+            $updateParts[] = 'field_types = ?';
+            $bindTypes .= 's';
+            $bindParams[] = $jsonFieldTypes;
+        }
 
-    if ($hasFieldOptions) {
-        $updateParts[] = 'field_options = ?';
-        $bindTypes .= 's';
-        $bindParams[] = $jsonFieldOptions;
-    }
+        if ($hasFieldRequired) {
+            $updateParts[] = 'field_required = ?';
+            $bindTypes .= 's';
+            $bindParams[] = $jsonFieldRequired;
+        }
 
-    $updateSql = 'UPDATE navigation SET ' . implode(', ', $updateParts) . ' WHERE nav = ?';
-    $bindTypes .= 's'; // for nav
-    $bindParams[] = $module;
+        if ($hasFieldOptions) {
+            $updateParts[] = 'field_options = ?';
+            $bindTypes .= 's';
+            $bindParams[] = $jsonFieldOptions;
+        }
 
-    $stmt = $db->prepare($updateSql);
-    if ($stmt === false) {
-        echo json_encode(array('success' => false, 'message' => 'Failed to prepare update: ' . $db->error));
+        $updateSql = 'UPDATE navigation SET ' . implode(', ', $updateParts) . ' WHERE nav = ?';
+        $bindTypes .= 's'; // for nav
+        $bindParams[] = $module;
+
+        $stmt = $db->prepare($updateSql);
+        if ($stmt === false) {
+            echo json_encode(array('success' => false, 'message' => 'Failed to prepare update: ' . $db->error));
+            exit;
+        }
+
+        // bind params dynamically (mysqli requires references)
+        $params = array_merge(array($bindTypes), $bindParams);
+        // mysqli::bind_param needs references, so build an array of references
+        $refs = array();
+        foreach ($params as $key => $value) {
+            $refs[$key] = & $params[$key];
+        }
+        call_user_func_array(array($stmt, 'bind_param'), $refs);
+
+        if ($stmt->execute()) {
+            echo json_encode(array('success' => true, 'message' => 'Field configurations saved successfully'));
+        } else {
+            echo json_encode(array('success' => false, 'message' => 'Failed to save configurations: ' . $stmt->error));
+        }
+        $stmt->close();
         exit;
     }
 
-    // bind params dynamically (mysqli requires references)
-    $bindNames = array();
-    $bindNames[] = $bindTypes;
-    for ($i = 0; $i < count($bindParams); $i++) {
-        $bindNames[] = & $bindParams[$i];
-    }
-    call_user_func_array(array($stmt, 'bind_param'), $bindNames);
+    // Add column action
+    if ($action === 'add_column') {
+        $col = isset($_POST['column']) ? trim($_POST['column']) : '';
 
-    if ($stmt->execute()) {
-        echo json_encode(array('success' => true, 'message' => 'Field configurations saved successfully'));
-    } else {
-        echo json_encode(array('success' => false, 'message' => 'Failed to save configurations: ' . $stmt->error));
+        // Validate column name strictly
+        if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $col)) {
+            echo json_encode(array('success' => false, 'message' => 'Invalid column name'));
+            exit;
+        }
+
+        // Protect critical columns
+        $protected = array('id', 'role', 'created_at', 'updated_at');
+        if (in_array(strtolower($col), $protected)) {
+            echo json_encode(array('success' => false, 'message' => 'Refusing to modify protected column'));
+            exit;
+        }
+
+        // Check column doesn't already exist
+        $check = mysqli_query($db, "SHOW COLUMNS FROM `" . $db->real_escape_string($tableName) . "` LIKE '" . $db->real_escape_string($col) . "'");
+        if ($check && mysqli_num_rows($check) > 0) {
+            echo json_encode(array('success' => false, 'message' => 'Column already exists'));
+            exit;
+        }
+
+        // Always create a nullable TEXT column (server-enforced default)
+        $sqlType = 'TEXT';
+        $nullSql = 'NULL';
+        $alterSql = "ALTER TABLE `" . $db->real_escape_string($tableName) . "` ADD COLUMN `" . $db->real_escape_string($col) . "` $sqlType $nullSql";
+
+        if (mysqli_query($db, $alterSql)) {
+            echo json_encode(array('success' => true, 'message' => 'New field has been added successfully!'));
+        } else {
+            error_log('Failed to add column ' . $col . ' to ' . $tableName . ': ' . mysqli_error($db));
+            echo json_encode(array('success' => false, 'message' => 'Failed to add column'));
+        }
+        exit;
     }
-    $stmt->close();
+
+    // Drop column action
+    if ($action === 'drop_column') {
+        $col = isset($_POST['column']) ? trim($_POST['column']) : '';
+        $confirm = isset($_POST['confirm']) && $_POST['confirm'] == '1';
+
+        if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $col)) {
+            echo json_encode(array('success' => false, 'message' => 'Invalid column name'));
+            exit;
+        }
+
+        $protected = array('id', 'role', 'created_at', 'updated_at');
+        if (in_array(strtolower($col), $protected)) {
+            echo json_encode(array('success' => false, 'message' => 'Refusing to drop protected column'));
+            exit;
+        }
+
+        // Ensure column exists
+        $check = mysqli_query($db, "SHOW COLUMNS FROM `" . $db->real_escape_string($tableName) . "` LIKE '" . $db->real_escape_string($col) . "'");
+        if (!($check && mysqli_num_rows($check) > 0)) {
+            echo json_encode(array('success' => false, 'message' => 'Column does not exist'));
+            exit;
+        }
+
+        if (!$confirm) {
+            echo json_encode(array('success' => false, 'message' => 'Confirmation required to drop column'));
+            exit;
+        }
+
+        $alterSql = "ALTER TABLE `" . $db->real_escape_string($tableName) . "` DROP COLUMN `" . $db->real_escape_string($col) . "`";
+        if (mysqli_query($db, $alterSql)) {
+            // Also remove any mappings for this column by updating plugin/field mappings
+            // remove from plugin json stored in navigation.plugin
+            $navRes = mysqli_query($db, "SELECT plugin, field_types, field_required, field_options FROM navigation WHERE nav = '" . $db->real_escape_string($module) . "' LIMIT 1");
+            if ($navRes && $navRow = mysqli_fetch_assoc($navRes)) {
+                $changed = false;
+                $pluginArr = json_decode($navRow['plugin'], true) ?: array();
+                unset($pluginArr[$col]);
+                $ft = json_decode($navRow['field_types'], true) ?: array(); unset($ft[$col]);
+                $fr = json_decode($navRow['field_required'], true) ?: array(); unset($fr[$col]);
+                $fo = json_decode($navRow['field_options'], true) ?: array(); unset($fo[$col]);
+                $upd = $db->prepare('UPDATE navigation SET plugin = ?, field_types = ?, field_required = ?, field_options = ? WHERE nav = ?');
+                if ($upd) {
+                    $upd->bind_param('sssss', json_encode($pluginArr), json_encode($ft), json_encode($fr), json_encode($fo), $module);
+                    $upd->execute();
+                    $upd->close();
+                }
+            }
+            echo json_encode(array('success' => true, 'message' => 'Column dropped and mappings cleaned'));
+        } else {
+            echo json_encode(array('success' => false, 'message' => 'Failed to drop column: ' . mysqli_error($db)));
+        }
+        exit;
+    }
+
+    // unknown action
+    echo json_encode(array('success' => false, 'message' => 'Unknown action'));
     exit;
 }
 
@@ -279,6 +379,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             color: #999;
             font-style: italic;
         }
+        /* Add-field section styles */
+        .add-field-section {
+            margin-top: 18px;
+        }
+        .add-field-panel {
+            background: #fbfdff;
+            border: 1px solid #e6eef8;
+            padding: 16px;
+            border-radius: 6px;
+            box-shadow: 0 1px 2px rgba(13,16,77,0.03);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .add-field-panel .form-control { max-width: 320px; }
+        .add-field-panel .col-inline { display:inline-block; vertical-align:middle; }
+        .add-field-panel .btn { white-space:nowrap; }
     </style>
 </head>
 <body>
@@ -297,6 +415,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         <h2>Field Configuration: <?= htmlspecialchars($module) ?></h2>
         
         <p class="text-muted">Configure each field's plugin mapping and input type. When a field has a plugin assigned, clicking the plugin icon will directly open that plugin. The input type controls how the field is rendered in add/edit forms.</p>
+        <div class="add-field-section">
+            <div class="add-field-panel" style="width:100%">
+                <div style="flex:1 1 60%; min-width:220px;">
+                    <strong style="color:#334">Add New Field</strong>
+                    <div style="font-size:12px;color:#666">Create a new column for this module.</div>
+                </div>
+                <div style="flex:0 1 35%; text-align:right;">
+                    <button type="button" id="showAddFieldBtn" class="btn btn-success">Add New Field</button>
+                </div>
+                <div style="width:100%; margin-top:10px;">
+                    <div id="addFieldContainer" style="display:none;">
+                        <form id="addColumnForm" class="form-inline" style="margin-bottom:0;">
+                            <div class="row" style="width:100%">
+                                <div class="col-xs-12 col-sm-9" style="margin-bottom:6px;">
+                                    <input type="text" class="form-control" name="column" placeholder="Enter New Field Name" required>
+                                </div>
+                                <div class="col-xs-12 col-sm-3" style="text-align:right;">
+                                    <button type="button" id="addColumnBtn" class="btn btn-primary">Add Field</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
         
         <form id="mappingForm">
             <div id="mappings-container">
@@ -351,6 +494,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         <button type="button" class="btn btn-sm btn-default clear-mapping" data-field="<?= htmlspecialchars($column) ?>">
                             Clear
                         </button>
+                        <button type="button" class="btn btn-sm btn-danger delete-column" data-field="<?= htmlspecialchars($column) ?>" style="margin-left:6px;">
+                            Drop
+                        </button>
                     </div>
                     <div class="options-input" data-field="<?= htmlspecialchars($column) ?>" <?= (isset($fieldTypeMappings[$column]) && in_array($fieldTypeMappings[$column], array('select', 'radio', 'checkbox'))) ? 'style="display:block;"' : '' ?>>
                         <label style="font-size: 11px; color: #666; margin-bottom: 3px;">Options (comma-separated, e.g., "Red,Green,Blue")</label>
@@ -370,6 +516,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             <button type="submit" class="btn btn-save">Save Mappings</button>
             <?php endif; ?>
         </form>
+        
+        <!-- Add Field UI (moved inside panel) -->
         
         <div id="alertContainer"></div>
     </div>
@@ -394,6 +542,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $('input[name="fieldRequired[' + field + ']"]').prop('checked', false);
                 $('input[name="fieldOptions[' + field + ']"]').val('');
                 $('.options-input[data-field="' + field + '"]').hide();
+            });
+            
+            // Delete column
+            $('.delete-column').click(function() {
+                var field = $(this).data('field');
+                if (!confirm('Are you sure you want to DROP column "' + field + '"? This is destructive.')) return;
+                showLoader();
+                $.post(window.location.href, { action: 'drop_column', column: field, confirm: '1' }, function(resp) {
+                    hideLoader();
+                    if (resp && resp.success) {
+                        showAlert('success', resp.message);
+                        setTimeout(function(){ location.reload(); }, 700);
+                    } else {
+                        showAlert('danger', resp ? resp.message : 'Failed to drop column');
+                    }
+                }, 'json').fail(function(){ hideLoader(); showAlert('danger','Request failed'); });
+            });
+
+            // Show Add Field form with slide animation and focus
+            $('#showAddFieldBtn').click(function() {
+                $('#addFieldContainer').slideToggle(180, function() {
+                    if ($(this).is(':visible')) {
+                        $(this).find('input[name=column]').focus();
+                    }
+                });
+            });
+
+            // Add column (Add Field) — client validates name and sends only the column
+            $('#addColumnBtn').click(function() {
+                var input = $('#addFieldContainer').find('input[name="column"]');
+                var col = $.trim(input.val());
+                var nameRegex = /^[A-Za-z_][A-Za-z0-9_]*$/;
+                if (!nameRegex.test(col)) {
+                    showAlert('danger', 'Invalid column name. Use letters, numbers and underscores, must not start with a number.');
+                    input.focus();
+                    return;
+                }
+                var payload = { action: 'add_column', column: col };
+                // disable button to prevent double submits
+                $('#addColumnBtn').prop('disabled', true);
+                showLoader();
+                $.post(window.location.href, payload, function(resp) {
+                    hideLoader();
+                    $('#addColumnBtn').prop('disabled', false);
+                    if (resp && resp.success) {
+                        showAlert('success', resp.message);
+                        setTimeout(function(){ location.reload(); }, 700);
+                    } else {
+                        showAlert('danger', resp ? resp.message : 'Failed to add column');
+                    }
+                }, 'json').fail(function(){ hideLoader(); $('#addColumnBtn').prop('disabled', false); showAlert('danger','Request failed'); });
             });
             
             // Show/hide options input based on field type selection
