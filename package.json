@@ -1,0 +1,29 @@
+{
+  "name": "billionerp",
+  "version": "1.0.0",
+  "description": "No code low code erp made with angularjs and php",
+  "main": "modalscript.js",
+  "scripts": {
+    "debug": "node automate-debug.js",
+    "debug:window": "node debug-window.js",
+    "test": "npx playwright test",
+    "test:visual": "npx playwright test tests/visual.spec.js",
+    "watch-debug": "npm-watch debug"
+  },
+  "watch": {
+    "debug": {
+      "patterns": ["*.php", "*.js", "*.html", "assets/**/*", "custom/**/*"],
+      "extensions": "php,js,html,css",
+      "quiet": false
+    }
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^24.4.0",
+    "concurrently": "^9.2.1",
+    "npm-watch": "^0.13.0"
+  }
+}

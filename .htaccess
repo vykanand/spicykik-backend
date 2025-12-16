@@ -1,0 +1,35 @@
+RewriteEngine On
+RewriteBase /
+
+# Handle API endpoints
+RewriteRule ^erpapi$ erpapi.php [L,QSA]
+
+# Handle clean URLs for PHP files
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}.php -f 
+RewriteRule ^(.+?)/?$ $1.php [L]
+
+# Allow both .php and clean URLs
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresDefault "access plus 1 year"
+    
+    # Cache PHP files
+    <FilesMatch "\.(php)$">
+        Header set Cache-Control "public, max-age=31536000"
+        Header set Expires "access plus 1 year"
+        Header set Pragma "cache"
+    </FilesMatch>
+    
+    # Cache static assets
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set X-Content-Type-Options "nosniff"
+</IfModule>

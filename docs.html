@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BillionERP API Documentation</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Inter', Arial, sans-serif; 
+      background: #1a1d24; 
+      color: #e2e8f0; 
+      height: 100vh;
+      overflow: hidden;
+    }
+    .header {
+      background: #23272f;
+      padding: 16px 24px;
+      border-bottom: 2px solid #4a5568;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header h1 {
+      font-size: 1.5rem;
+      color: #fff;
+      font-weight: 700;
+    }
+    .header .subtitle {
+      color: #a0aec0;
+      font-size: 0.9rem;
+      margin-top: 4px;
+    }
+    .main-container {
+      display: flex;
+      height: calc(100vh - 70px);
+    }
+    
+    /* Left Panel - API List */
+    .api-list-panel {
+      width: 350px;
+      background: #23272f;
+      border-right: 2px solid #4a5568;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    .api-list-header {
+      padding: 16px;
+      background: #2c313a;
+      border-bottom: 1px solid #4a5568;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .api-list-header h2 {
+      font-size: 1.1rem;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .search-box {
+      width: 100%;
+      padding: 8px 12px;
+      background: #1a1d24;
+      border: 1px solid #4a5568;
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-size: 0.9rem;
+    }
+    .module-item {
+      border-bottom: 1px solid #2c313a;
+    }
+    .module-header {
+      padding: 12px 16px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #23272f;
+      transition: background 0.2s;
+    }
+    .module-header:hover {
+      background: #2c313a;
+    }
+    .module-name {
+      font-weight: 600;
+      color: #fff;
+      font-size: 1rem;
+    }
+    .module-count {
+      background: #6366f1;
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .endpoints-list {
+      display: none;
+      background: #1a1d24;
+    }
+    .endpoints-list.expanded {
+      display: block;
+    }
+    .endpoint-item {
+      padding: 10px 16px 10px 32px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: all 0.2s;
+    }
+    .endpoint-item:hover {
+      background: #23272f;
+      border-left-color: #6366f1;
+    }
+    .endpoint-item.active {
+      background: #2c313a;
+      border-left-color: #6366f1;
+    }
+    .endpoint-method {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-right: 8px;
+    }
+    .method-get { background: #22c55e; color: #fff; }
+    .method-post { background: #3b82f6; color: #fff; }
+    .method-put { background: #f59e0b; color: #fff; }
+    .method-delete { background: #ef4444; color: #fff; }
+    .endpoint-param {
+      color: #a0aec0;
+      font-size: 0.85rem;
+    }
+    .endpoint-desc {
+      color: #718096;
+      font-size: 0.75rem;
+      margin-top: 4px;
+    }
+    
+    /* Right Panel - REST Client */
+    .rest-client-panel {
+      flex: 1;
+      overflow-y: auto;
+      background: #1a1d24;
+    }
+    .rest-client-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 32px;
+    }
+    .client-header {
+      margin-bottom: 24px;
+    }
+    .client-header h2 {
+      font-size: 1.3rem;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .client-header .note {
+      color: #a0aec0;
+      font-size: 0.9rem;
+    }
+    .row { display: flex; gap: 12px; }
+    .row > * { flex: 1; }
+    label { font-weight: 600; margin-top: 16px; display: block; color: #a0aec0; }
+    input, select, textarea { 
+      width: 100%; 
+      padding: 10px 12px; 
+      margin-top: 6px; 
+      border-radius: 6px; 
+      border: 1px solid #4a5568; 
+      font-size: 1rem; 
+      background: #23272f; 
+      color: #e2e8f0; 
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #6366f1;
+    }
+    textarea { min-height: 100px; font-family: 'Courier New', monospace; }
+    button { 
+      padding: 10px 24px; 
+      border-radius: 6px; 
+      border: none; 
+      background: #6366f1; 
+      color: #fff; 
+      font-weight: 600; 
+      cursor: pointer; 
+      margin-top: 18px; 
+      transition: background 0.2s;
+    }
+    button:hover { background: #4338ca; }
+    .tabs { 
+      display: flex; 
+      gap: 4px; 
+      margin-top: 18px; 
+      border-bottom: 2px solid #4a5568; 
+    }
+    .tab { 
+      padding: 10px 20px; 
+      cursor: pointer; 
+      background: transparent; 
+      color: #a0aec0; 
+      border: none; 
+      border-radius: 0; 
+      font-weight: 600; 
+      margin-right: 0;
+      margin-top: 0;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+    }
+    .tab:hover {
+      color: #e2e8f0;
+      background: #23272f;
+    }
+    .tab.active { 
+      color: #fff; 
+      border-bottom-color: #6366f1;
+      background: transparent;
+    }
+    .tab-content { display: none; margin-top: 16px; }
+    .tab-content.active { display: block; }
+    .response-section { margin-top: 32px; }
+    .response-header { 
+      font-weight: 600; 
+      color: #fff; 
+      margin-bottom: 12px; 
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    pre { 
+      background: #23272f; 
+      padding: 16px; 
+      border-radius: 8px; 
+      max-height: 400px; 
+      overflow: auto; 
+      color: #e2e8f0; 
+      border: 1px solid #4a5568;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .status-success { color: #22c55e; font-weight: 600; }
+    .status-error { color: #ef4444; font-weight: 600; }
+    .method-select { width: 130px; flex: none; }
+    .url-input { flex: 1; }
+    .send-btn { margin-left: 12px; flex: none; margin-top: 0; }
+    .header-row, .param-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+    .header-row input, .param-row input { flex: 1; margin-top: 0; }
+    .remove-btn { 
+      background: #ef4444; 
+      color: #fff; 
+      border: none; 
+      border-radius: 4px; 
+      padding: 8px 12px; 
+      font-size: 0.85rem; 
+      cursor: pointer;
+      margin-top: 0;
+      flex: none;
+    }
+    .remove-btn:hover { background: #b91c1c; }
+    .add-btn { 
+      background: #6366f1; 
+      color: #fff; 
+      border: none; 
+      border-radius: 4px; 
+      padding: 6px 14px; 
+      font-size: 0.85rem; 
+      cursor: pointer; 
+      margin-top: 8px; 
+      display: inline-block;
+    }
+    .add-btn:hover { background: #4338ca; }
+    .multipart-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .multipart-row input[type="text"] {
+      width: 160px;
+      min-width: 120px;
+    }
+    .multipart-row input[type="file"] {
+      width: 180px;
+      min-width: 120px;
+    }
+    .multipart-row select {
+      width: 110px;
+      min-width: 80px;
+    }
+    .loading {
+      color: #a0aec0;
+      text-align: center;
+      padding: 40px;
+    }
+    .error-message {
+      background: #ef4444;
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin: 16px;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #718096;
+    }
+    .empty-state h3 {
+      font-size: 1.2rem;
+      margin-bottom: 8px;
+    }
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #1a1d24;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #4a5568;
+      border-radius: 5px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #6366f1;
+    }
+  </style>
+  <style>
+    /* Global loader styles */
+    .global-loader {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10, 12, 15, 0.6);
+      z-index: 9999;
+    }
+    .loader-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 18px 22px;
+      border-radius: 10px;
+      background: rgba(35, 39, 42, 0.95);
+      border: 1px solid #4a5568;
+    }
+    .spinner {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: 4px solid rgba(255,255,255,0.08);
+      border-top-color: #6366f1;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1 id="mainHeading">🚀 API Documentation</h1>
+      <div class="subtitle">Interactive API Documentation & REST Client</div>
+    </div>
+  </div>
+  
+  <div class="main-container">
+    <!-- Left Panel: API List -->
+    <div class="api-list-panel">
+      <div class="api-list-header">
+        <h2>API Modules</h2>
+        <input type="text" id="searchBox" class="search-box" placeholder="Search modules or endpoints...">
+      </div>
+      <div id="modulesList">
+        <div class="loading">Loading API modules...</div>
+      </div>
+    </div>
+    
+    <!-- Right Panel: REST Client -->
+    <div class="rest-client-panel">
+      <div class="rest-client-container">
+        <div class="client-header">
+          <h2>REST Client</h2>
+          <div class="note">Test your APIs directly from the browser. Select an endpoint from the left panel or enter a custom URL.</div>
+        </div>
+        
+        <form id="restForm" autocomplete="off">
+          <div class="row">
+            <select id="method" class="method-select">
+              <option>GET</option>
+              <option>POST</option>
+              <option>PUT</option>
+              <option>PATCH</option>
+              <option>DELETE</option>
+              <option>OPTIONS</option>
+              <option>HEAD</option>
+            </select>
+            <input id="url" class="url-input" type="text" placeholder="https://api.example.com/resource" required />
+            <button type="submit" class="send-btn">Send Request</button>
+          </div>
+          
+          <div class="tabs">
+            <button type="button" class="tab active" data-tab="params">Params</button>
+            <button type="button" class="tab" data-tab="headers">Headers</button>
+            <button type="button" class="tab" data-tab="auth">Auth</button>
+            <button type="button" class="tab" data-tab="body">Body</button>
+          </div>
+          
+          <div id="tab-params" class="tab-content active">
+            <div id="params-list"></div>
+            <button type="button" class="add-btn" id="add-param">+ Add Param</button>
+          </div>
+          
+          <div id="tab-headers" class="tab-content">
+            <div id="headers-list"></div>
+            <button type="button" class="add-btn" id="add-header">+ Add Header</button>
+          </div>
+          
+          <div id="tab-auth" class="tab-content">
+            <label for="auth-type">Auth Type</label>
+            <select id="auth-type">
+              <option value="none">None</option>
+              <option value="basic">Basic Auth</option>
+              <option value="bearer">Bearer Token</option>
+            </select>
+            <div id="auth-fields" style="margin-top:12px"></div>
+          </div>
+          
+          <div id="tab-body" class="tab-content">
+            <label for="body-type">Body Type</label>
+            <select id="body-type">
+              <option value="raw">Raw</option>
+              <option value="json">JSON</option>
+              <option value="form">Form Data</option>
+              <option value="multipart">Multipart Form</option>
+            </select>
+            <div id="body-multipart-fields" style="display:none; margin-top:12px;"></div>
+            <textarea id="body" placeholder="Request body"></textarea>
+          </div>
+        </form>
+        
+        <div class="response-section" id="result" style="display:none">
+          <div class="response-header">
+            <span id="status" class="status-success"></span>
+            <span id="status-text"></span>
+          </div>
+          <pre id="response"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Loader -->
+  <div id="global-loader" class="global-loader" style="display:none">
+    <div class="loader-box">
+      <div class="spinner"></div>
+      <div id="loader-msg" style="margin-top:8px; color:#e2e8f0; font-weight:600; font-size:0.95rem;">Loading...</div>
+    </div>
+  </div>
+
+  <script>
+    let allModules = [];
+    
+    // Set dynamic heading based on hostname
+    document.getElementById('mainHeading').textContent = '🚀 ' + window.location.hostname + ' API Documentation';
+    
+    // Load API modules from docs.php
+    async function loadModules() {
+      showLoader('Loading API modules...');
+      try {
+        const response = await fetch('docs.php');
+        const data = await response.json();
+        
+        if (data.success) {
+          allModules = data.modules;
+          renderModules(allModules);
+        } else {
+          document.getElementById('modulesList').innerHTML = '<div class="error-message">Failed to load modules</div>';
+        }
+      } catch (error) {
+        document.getElementById('modulesList').innerHTML = '<div class="error-message">Error: ' + error.message + '</div>';
+      } finally {
+        hideLoader();
+      }
+    }
+    
+    // Render modules in the left panel
+    function renderModules(modules) {
+      const container = document.getElementById('modulesList');
+      
+      if (modules.length === 0) {
+        container.innerHTML = '<div class="empty-state"><h3>No APIs Found</h3><p>No API modules detected in navigation table.</p></div>';
+        return;
+      }
+      
+      container.innerHTML = '';
+      
+      modules.forEach(module => {
+        const moduleDiv = document.createElement('div');
+        moduleDiv.className = 'module-item';
+        
+        const header = document.createElement('div');
+        header.className = 'module-header';
+        header.innerHTML = `
+          <span class="module-name">${module.name}</span>
+          <span class="module-count">${module.endpoints.length}</span>
+        `;
+        
+        const endpointsList = document.createElement('div');
+        endpointsList.className = 'endpoints-list';
+        
+        module.endpoints.forEach(endpoint => {
+          const endpointDiv = document.createElement('div');
+          endpointDiv.className = 'endpoint-item';
+          endpointDiv.innerHTML = `
+            <div>
+              <span class="endpoint-method method-${endpoint.method.toLowerCase()}">${endpoint.method}</span>
+              <span class="endpoint-param">${endpoint.param}</span>
+            </div>
+            <div class="endpoint-desc">${endpoint.description}</div>
+          `;
+
+          // Click to load into client
+          endpointDiv.addEventListener('click', () => {
+            loadEndpointToClient(module, endpoint);
+            document.querySelectorAll('.endpoint-item').forEach(el => el.classList.remove('active'));
+            endpointDiv.classList.add('active');
+          });
+
+          // If GET endpoint, add a lightweight "Load Sample" button to prefill params from DB
+          if (endpoint.method.toUpperCase() === 'GET') {
+            const sampleBtn = document.createElement('button');
+            sampleBtn.type = 'button';
+            sampleBtn.className = 'add-btn';
+            sampleBtn.style.marginLeft = '12px';
+            sampleBtn.textContent = 'Load Sample';
+            sampleBtn.onclick = async (e) => {
+              e.stopPropagation();
+              await fetchAndPrefillSample(module, endpoint);
+              // highlight after loading
+              document.querySelectorAll('.endpoint-item').forEach(el => el.classList.remove('active'));
+              endpointDiv.classList.add('active');
+            };
+            // append button to endpointDiv
+            endpointDiv.querySelector('.endpoint-desc').appendChild(sampleBtn);
+          }
+          
+          endpointsList.appendChild(endpointDiv);
+        });
+        
+        header.addEventListener('click', () => {
+          endpointsList.classList.toggle('expanded');
+        });
+        
+        moduleDiv.appendChild(header);
+        moduleDiv.appendChild(endpointsList);
+        container.appendChild(moduleDiv);
+      });
+    }
+    
+    // Load endpoint into REST client
+    function loadEndpointToClient(module, endpoint) {
+      // Build base URL to module api.php
+      const base = window.location.origin + window.location.pathname.replace('docs.html', '') + module.apiPath;
+      document.getElementById('method').value = endpoint.method;
+
+      // For GET endpoints, include the control param as a flag with default value '1'
+      let url = base;
+      document.getElementById('params-list').innerHTML = '';
+      if (endpoint.method.toUpperCase() === 'GET' && endpoint.param) {
+        // Put param in both the URL and the params list so the client sends it properly
+        const sep = url.includes('?') ? '&' : '?';
+        url = url + sep + encodeURIComponent(endpoint.param) + '=1';
+        addRow('params-list', 'param', endpoint.param, '1');
+      } else {
+        document.getElementById('params-list').innerHTML = '';
+      }
+      document.getElementById('url').value = url;
+    }
+
+    // Fetch a sample from the API and prefill param rows
+    async function fetchAndPrefillSample(module, endpoint) {
+      showLoader('Loading sample...');
+      try {
+        const base = window.location.origin + window.location.pathname.replace('docs.html', '') + module.apiPath;
+        // Strategy:
+        // - If endpoint.param === 'distinct', try to fetch columns via getfirstcontent then set distinct=<first_column>
+        // - Otherwise, try to call base?endpoint.param=1 (eg ?getcontent=1) and use first row to prefill param key/values
+
+        document.getElementById('params-list').innerHTML = '';
+
+        if (endpoint.param === 'distinct') {
+          // get columns
+          const colsResp = await fetch(base + (base.includes('?') ? '&' : '?') + 'getfirstcontent=1');
+          const cols = await colsResp.json();
+          if (Array.isArray(cols) && cols.length > 0) {
+            const firstCol = cols[0];
+            // set url and add distinct param
+            const url = base + (base.includes('?') ? '&' : '?') + 'distinct=' + encodeURIComponent(firstCol);
+            document.getElementById('url').value = url;
+            document.getElementById('method').value = 'GET';
+            addRow('params-list', 'param', 'distinct', firstCol);
+          } else {
+            // fallback: just load endpoint into client
+            loadEndpointToClient(module, endpoint);
+          }
+          return;
+        }
+
+        // General GET endpoints (like getcontent/filters)
+        const resp = await fetch(base + (base.includes('?') ? '&' : '?') + encodeURIComponent(endpoint.param) + '=1');
+        let data;
+        try { data = await resp.json(); } catch(e) { data = null; }
+        if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object') {
+          // populate url and param rows with first item
+          const url = base + (base.includes('?') ? '&' : '?') + encodeURIComponent(endpoint.param) + '=1';
+          document.getElementById('url').value = url;
+          document.getElementById('method').value = 'GET';
+          const first = data[0];
+          Object.keys(first).forEach(k => {
+            // skip internal system columns
+            if (k === 'id' || k === 'created_at') return;
+            addRow('params-list', 'param', k, first[k]);
+          });
+        } else {
+          // If nothing useful, just load endpoint with default flag
+          loadEndpointToClient(module, endpoint);
+        }
+      } catch (err) {
+        console.warn('Sample load failed', err);
+        loadEndpointToClient(module, endpoint);
+      } finally {
+        hideLoader();
+      }
+    }
+    
+    // Search functionality
+    document.getElementById('searchBox').addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase();
+      
+      if (query === '') {
+        renderModules(allModules);
+        return;
+      }
+      
+      const filtered = allModules.filter(module => {
+        const nameMatch = module.name.toLowerCase().includes(query);
+        const endpointMatch = module.endpoints.some(ep => 
+          ep.param.toLowerCase().includes(query) || 
+          ep.description.toLowerCase().includes(query)
+        );
+        return nameMatch || endpointMatch;
+      });
+      
+      renderModules(filtered);
+    });
+    
+    // Tab logic
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.onclick = function() {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+        document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+      };
+    });
+    
+    // Dynamic Params/Headers
+    function addRow(listId, type, keyVal = '', valueVal = '') {
+      const div = document.createElement('div');
+      div.className = type + '-row';
+      div.innerHTML = `<input type="text" placeholder="Key" class="${type}-key" value="${keyVal}" /> <input type="text" placeholder="Value" class="${type}-value" value="${valueVal}" /> <button type="button" class="remove-btn">Remove</button>`;
+      div.querySelector('.remove-btn').onclick = () => div.remove();
+      document.getElementById(listId).appendChild(div);
+    }
+    
+    document.getElementById('add-param').onclick = () => addRow('params-list', 'param');
+    document.getElementById('add-header').onclick = () => addRow('headers-list', 'header');
+    
+    // Auth fields
+    function renderAuthFields() {
+      const type = document.getElementById('auth-type').value;
+      const container = document.getElementById('auth-fields');
+      container.innerHTML = '';
+      if (type === 'basic') {
+        container.innerHTML = '<input type="text" id="auth-user" placeholder="Username" /><input type="password" id="auth-pass" placeholder="Password" />';
+      } else if (type === 'bearer') {
+        container.innerHTML = '<input type="text" id="auth-token" placeholder="Bearer Token" />';
+      }
+    }
+    document.getElementById('auth-type').onchange = renderAuthFields;
+    renderAuthFields();
+    
+    // Body type logic
+    document.getElementById('body-type').onchange = function() {
+      const type = this.value;
+      const body = document.getElementById('body');
+      const multipartFields = document.getElementById('body-multipart-fields');
+      if (type === 'json') {
+        body.style.display = '';
+        body.placeholder = '{\n  \n}';
+        multipartFields.style.display = 'none';
+      } else if (type === 'form') {
+        body.style.display = '';
+        body.placeholder = 'key1=value1&key2=value2';
+        multipartFields.style.display = 'none';
+      } else if (type === 'multipart') {
+        body.style.display = 'none';
+        multipartFields.style.display = '';
+      } else {
+        body.style.display = '';
+        body.placeholder = 'Request body';
+        multipartFields.style.display = 'none';
+      }
+    };
+    
+    // Multipart field logic
+    function addMultipartField() {
+      const div = document.createElement('div');
+      div.className = 'multipart-row';
+      div.innerHTML = `<input type="text" placeholder="Field name" class="multipart-key" /> <input type="text" placeholder="Value" class="multipart-value" /> <input type="file" class="multipart-file" style="display:none" /> <select class="multipart-type"><option value="text">Text</option><option value="file">File</option></select> <button type="button" class="remove-btn">Remove</button>`;
+      const typeSelect = div.querySelector('.multipart-type');
+      const fileInput = div.querySelector('.multipart-file');
+      const valueInput = div.querySelector('.multipart-value');
+      typeSelect.onchange = function() {
+        if (typeSelect.value === 'file') {
+          fileInput.style.display = '';
+          valueInput.style.display = 'none';
+        } else {
+          fileInput.style.display = 'none';
+          valueInput.style.display = '';
+        }
+      };
+      div.querySelector('.remove-btn').onclick = () => div.remove();
+      document.getElementById('body-multipart-fields').appendChild(div);
+    }
+    
+    // Add button for multipart fields
+    if (!document.getElementById('add-multipart')) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'add-btn';
+      btn.id = 'add-multipart';
+      btn.textContent = '+ Add Multipart Field';
+      btn.onclick = addMultipartField;
+      document.getElementById('body-multipart-fields').appendChild(btn);
+    }
+    
+    // Form submit
+    document.getElementById('restForm').onsubmit = async function(e) {
+      e.preventDefault();
+      let method = document.getElementById('method').value;
+      let url = document.getElementById('url').value.trim();
+      
+      // Params
+      let params = {};
+      document.querySelectorAll('#params-list .param-row').forEach(row => {
+        const k = row.querySelector('.param-key').value;
+        const v = row.querySelector('.param-value').value;
+        if (k) params[k] = v;
+      });
+      if (Object.keys(params).length) {
+        const qp = Object.keys(params).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k])).join('&');
+        url += (url.includes('?') ? '&' : '?') + qp;
+      }
+      
+      // Headers
+      let headers = {};
+      document.querySelectorAll('#headers-list .header-row').forEach(row => {
+        const k = row.querySelector('.header-key').value;
+        const v = row.querySelector('.header-value').value;
+        if (k) headers[k] = v;
+      });
+      
+      // Auth
+      const authType = document.getElementById('auth-type').value;
+      if (authType === 'basic') {
+        const user = document.getElementById('auth-user')?.value;
+        const pass = document.getElementById('auth-pass')?.value;
+        if (user && pass) {
+          headers['Authorization'] = 'Basic ' + btoa(user + ':' + pass);
+        }
+      } else if (authType === 'bearer') {
+        const token = document.getElementById('auth-token')?.value;
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+      }
+      
+      // Body
+      let body = document.getElementById('body').value;
+      const bodyType = document.getElementById('body-type').value;
+      let options = { method, headers };
+      
+      if (method !== 'GET' && method !== 'HEAD') {
+        if (bodyType === 'json') {
+          headers['Content-Type'] = 'application/json';
+          options.body = body;
+        } else if (bodyType === 'form') {
+          headers['Content-Type'] = 'application/x-www-form-urlencoded';
+          options.body = body;
+        } else if (bodyType === 'multipart') {
+          const formData = new FormData();
+          document.querySelectorAll('#body-multipart-fields .multipart-row').forEach(row => {
+            const key = row.querySelector('.multipart-key').value;
+            const type = row.querySelector('.multipart-type').value;
+            if (type === 'file') {
+              const fileInput = row.querySelector('.multipart-file');
+              if (fileInput.files.length > 0) {
+                formData.append(key, fileInput.files[0]);
+              }
+            } else {
+              const value = row.querySelector('.multipart-value').value;
+              formData.append(key, value);
+            }
+          });
+          options.body = formData;
+          delete headers['Content-Type'];
+        } else {
+          options.body = body;
+        }
+      }
+      
+      // Show loader + disable send button
+      const sendBtn = document.querySelector('.send-btn');
+      showLoader('Executing request...');
+      if (sendBtn) sendBtn.disabled = true;
+      try {
+        const resp = await fetch(url, options);
+        let text;
+        let status = resp.status;
+        let statusText = resp.statusText;
+        try { text = await resp.json(); } catch { text = await resp.text(); }
+        
+        document.getElementById('result').style.display = 'block';
+        document.getElementById('status').textContent = status;
+        document.getElementById('status').className = status >= 200 && status < 300 ? 'status-success' : 'status-error';
+        document.getElementById('status-text').textContent = ' ' + statusText;
+        document.getElementById('response').textContent = typeof text === 'string' ? text : JSON.stringify(text, null, 2);
+        // Scroll to response for visibility
+        try { document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e) {}
+      } catch (err) {
+        document.getElementById('result').style.display = 'block';
+        document.getElementById('status').textContent = 'Error';
+        document.getElementById('status').className = 'status-error';
+        document.getElementById('status-text').textContent = '';
+        document.getElementById('response').textContent = 'Error: ' + (err.message || String(err));
+        // Scroll to response for visibility
+        try { document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e) {}
+      } finally {
+        hideLoader();
+        if (sendBtn) sendBtn.disabled = false;
+      }
+    };
+    
+    // Initialize
+    loadModules();
+
+    // Loader control helpers
+    function showLoader(msg) {
+      const g = document.getElementById('global-loader');
+      if (g) {
+        document.getElementById('loader-msg').textContent = msg || 'Loading...';
+        g.style.display = 'flex';
+      }
+    }
+
+    function hideLoader() {
+      const g = document.getElementById('global-loader');
+      if (g) g.style.display = 'none';
+    }
+  </script>
+</body>
+</html>

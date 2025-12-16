@@ -1,0 +1,1 @@
+const fs = require('fs'); const vm = require('vm'); const s = fs.readFileSync('weather1/app/app.js','utf8'); try { new vm.Script(s); console.log('Syntax OK'); } catch (e) { console.error('Syntax error:', e.message); console.error(e.stack); process.exit(1); }

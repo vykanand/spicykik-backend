@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Uploadcare Widget Test</title>
+    <script src="https://ucarecdn.com/libs/widget/3.x/uploadcare.full.min.js"></script>
+</head>
+<body>
+    <h2>Uploadcare Widget Test</h2>
+    <input type="hidden"
+           role="uploadcare-uploader"
+           id="uc-test-input"
+           data-public-key="e073252401baf915ad63"
+           data-multiple="false"
+           data-tabs="file url"
+           style="display: none;" />
+    <button id="openDialog">Open Upload Dialog</button>
+    <div id="result"></div>
+    <script>
+        document.getElementById('openDialog').onclick = function() {
+            var widget = uploadcare.Widget('#uc-test-input');
+            widget.openDialog();
+            widget.onUploadComplete = function(fileInfo) {
+                document.getElementById('result').innerHTML =
+                    '<p>Upload complete!</p>' +
+                    '<p>File name: ' + fileInfo.name + '</p>' +
+                    '<p>CDN URL: <a href="' + fileInfo.cdnUrl + '" target="_blank">' + fileInfo.cdnUrl + '</a></p>';
+                console.log('Upload complete:', fileInfo);
+            };
+        };
+    </script>
+</body>
+</html>

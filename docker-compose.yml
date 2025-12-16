@@ -1,0 +1,36 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      cache_from:
+        - "${COMPOSE_PROJECT_NAME}-web:latest"
+    image: "${COMPOSE_PROJECT_NAME}-web:latest"
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-9001}:80"
+    volumes:
+      - php-session:/tmp/php-sessions
+      - php-uploads:/var/www/html/uploads
+      - ./:/var/www/html
+    environment:
+      - APACHE_LOG_DIR=/var/log/apache2
+      - PHP_OPCACHE_VALIDATE_TIMESTAMPS=1
+      - PHP_OPCACHE_REVALIDATE_FREQ=0
+    user: root
+    working_dir: /var/www/html
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  php-session:
+  php-uploads:

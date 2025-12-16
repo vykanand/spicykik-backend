@@ -1,0 +1,3 @@
+CREATE USER 'vykanand'@'%' IDENTIFIED BY 'vikas3891';
+GRANT ALL PRIVILEGES ON erpz.* TO 'vykanand'@'%';
+FLUSH PRIVILEGES;

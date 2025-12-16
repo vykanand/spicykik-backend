@@ -1,0 +1,62 @@
+# Node.js and Angular
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+package-lock.json
+
+# Angular build artifacts
+/dist/
+/out-tsc/
+/.angular/
+
+# IDE files
+.vscode/
+/.idea/
+/*.sublime-workspace
+/*.sublime-project
+screenshots/
+# MacOS Finder files
+.DS_Store
+
+# Linux system files
+*~
+
+# Windows system files
+Thumbs.db
+ehthumbs.db
+
+# PHP
+/vendor/
+/composer.lock
+
+# Logs
+*.log
+
+# Composer vendor directory
+/vendor/
+
+# PHPUnit test cache
+.phpunit.result.cache
+
+# Temporary files
+*.swp
+*.swo
+
+# .env files (store sensitive data such as API keys, database credentials, etc.)
+.env
+
+# Cache
+/.cache/
+/*.cache
+
+# Miscellaneous
+*.bak
+*.tmp
+*.log
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

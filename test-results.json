@@ -1,0 +1,154 @@
+{
+  "config": {
+    "configFile": "C:\\dev\\billionerp\\playwright.config.ts",
+    "rootDir": "C:/dev/billionerp/tests",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "C:/dev/billionerp/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/dev/billionerp/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.55.0",
+    "workers": 4,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "debug.spec.js",
+      "file": "debug.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "debug app for errors",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 1765,
+                  "error": {
+                    "message": "Error: Console errors detected: iframeLoaded is not defined",
+                    "stack": "Error: Console errors detected: iframeLoaded is not defined\n    at Object.page (C:\\dev\\billionerp\\global-setup.js:31:13)",
+                    "location": {
+                      "file": "C:\\dev\\billionerp\\global-setup.js",
+                      "column": 13,
+                      "line": 31
+                    },
+                    "snippet": "\u001b[90m   at \u001b[39m..\\global-setup.js:31\n\n\u001b[0m \u001b[90m 29 |\u001b[39m       console\u001b[33m.\u001b[39mlog(\u001b[32m'Captured errors for fixing:'\u001b[39m\u001b[33m,\u001b[39m errors)\u001b[33m;\u001b[39m\n \u001b[90m 30 |\u001b[39m       \u001b[90m// If logs are too hard to fix, ask for user confirmation (handled by AI agent)\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 31 |\u001b[39m       \u001b[36mthrow\u001b[39m \u001b[36mnew\u001b[39m \u001b[33mError\u001b[39m(\u001b[32m`Console errors detected: ${errors.join('; ')}`\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m             \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 32 |\u001b[39m     }\n \u001b[90m 33 |\u001b[39m   }\u001b[33m,\u001b[39m\n \u001b[90m 34 |\u001b[39m })\u001b[33m;\u001b[39m\u001b[0m"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\dev\\billionerp\\global-setup.js",
+                        "column": 13,
+                        "line": 31
+                      },
+                      "message": "Error: Console errors detected: iframeLoaded is not defined\n\n   at ..\\global-setup.js:31\n\n  29 |       console.log('Captured errors for fixing:', errors);\n  30 |       // If logs are too hard to fix, ask for user confirmation (handled by AI agent)\n> 31 |       throw new Error(`Console errors detected: ${errors.join('; ')}`);\n     |             ^\n  32 |     }\n  33 |   },\n  34 | });\n    at Object.page (C:\\dev\\billionerp\\global-setup.js:31:13)"
+                    }
+                  ],
+                  "stdout": [
+                    {
+                      "text": "Console warning: An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing.\n"
+                    },
+                    {
+                      "text": "Page error: iframeLoaded is not defined\n"
+                    },
+                    {
+                      "text": "Console log: Raw user data from localStorage: null\n"
+                    },
+                    {
+                      "text": "Console warning: A preload for 'https://code.jquery.com/jquery-3.6.0.min.js' is found, but is not used due to an integrity mismatch.\n"
+                    },
+                    {
+                      "text": "Console log: ServiceWorker registration successful\n"
+                    },
+                    {
+                      "text": "Captured errors for fixing: [ \u001b[32m'iframeLoaded is not defined'\u001b[39m ]\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2025-09-14T20:06:34.300Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\dev\\billionerp\\test-results\\debug-debug-app-for-errors-chromium\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\dev\\billionerp\\global-setup.js",
+                    "column": 13,
+                    "line": 31
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "d0c4411d9520030c5a85-1ca3c246ce3c5e85df75",
+          "file": "debug.spec.js",
+          "line": 3,
+          "column": 5
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2025-09-14T20:06:32.968Z",
+    "duration": 3365.425,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

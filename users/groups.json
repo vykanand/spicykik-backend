@@ -1,0 +1,30 @@
+[
+    {
+        "id": 1,
+        "name": "Administrators",
+        "roles": [
+            "user"
+        ]
+    },
+    {
+        "id": 2,
+        "name": "Manager",
+        "roles": [
+            "manager"
+        ]
+    },
+    {
+        "id": 3,
+        "name": "sys admin",
+        "roles": [
+            "user"
+        ]
+    },
+    {
+        "id": 4,
+        "name": "users",
+        "roles": [
+            "user"
+        ]
+    }
+]

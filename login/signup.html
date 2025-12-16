@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script src="jquery.min.js"></script>
+    
+	<title>Register</title>
+	<link rel="stylesheet" type="text/css" href="https://unpkg.com/notie/dist/notie.min.css">
+  	<style>
+    /* override styles here */
+    .notie-container {
+    	z-index: 999999999;
+      box-shadow: none;
+    }
+  	</style>
+
+	<link rel="stylesheet" href="style.css">
+	<link rel='stylesheet' href='https://fonts.googleapis.com/css?family=Open+Sans:400,300'>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+
+	<!--[if lt IE 9]>
+		<script src="https://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+	<![endif]-->
+
+</head>
+
+<body>
+
+	<div id="login">
+
+		<div style="text-align: center;">
+		<img style="width: 15vh;height: 5vh;margin: auto;padding: 10px;" src="../logo.png">
+		</div>
+		<h1 style="margin-top:5vh"><strong>Welcome.</strong> Please Register.</h1>
+
+		<form action="javascript:void(0);" method="get">
+
+			<fieldset>
+				<p><input name="register" type="hidden" value="true"></p>
+				<p><input name="type" type="hidden" value="user"></p>
+				<p><input name="name" type="text" placeholder="Enter Your Name"></p>
+
+				<p><input name="phone" type="text" placeholder="Enter Mobile no."></p>
+				<p><input name="address" type="text" placeholder="Enter address"></p>
+
+				<p><input name="email" type="text" placeholder="Enter Your Email"></p>
+
+
+				<p><input name="password" id="pss" type="password" placeholder="Enter Password"></p>
+
+				<p><input name="confirm-password" id="cpss" type="password" placeholder="Confirm Password"></p> 
+
+				<p><input name="btn" id="target" type="submit"></p>
+				<p style="text-align: center;"><a href="login.html">Already a member?Login here.</a></p>
+
+			</fieldset>
+
+		</form>
+
+		
+
+	</div> 
+<script type="text/javascript">
+
+	function capitalizeFirstLetter(string) {
+  return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+	$( document ).ready(function() {
+
+		
+
+    $( "#target" ).click(function() {
+		var leno='';
+    	var values = {};
+$('input').each(function(){
+    if ($(this).val()) {
+values[this.name] = $(this).val();
+}else{
+	if(this.name !== 'btn'){
+	leno += ' '+capitalizeFirstLetter(this.name)+',';
+	}
+}
+
+})
+console.log(leno);
+if(leno !== '' && $('#pss').val() == $('#cpss').val()){
+var fll = leno.slice(0, -1);
+	notie.alert({ type: 'error', text: 'Please fill'+fll, stay: false })
+	
+}else{
+
+
+var str = "";
+for (var key in values) {
+    if (str != "") {
+        str += "&";
+    }
+
+
+    str += key + "=" + encodeURIComponent(values[key]);
+}
+console.log(str);
+
+
+$.post("api/userapi",str,function(data, status){
+
+    console.log(data);
+    var ddata = JSON.parse(data)
+    console.log(ddata);
+    if(ddata.response == 'success')
+    notie.alert({ type: 'success', text: 'User created successfully.', stay: false })
+window.location.href = './'
+
+  });
+
+}
+
+    })
+})
+</script>
+
+
+<script src="https://unpkg.com/notie"></script>
+
+</body>
+</html>
+

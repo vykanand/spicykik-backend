@@ -1,0 +1,3 @@
+- [x] Fix the malformed URL in gsa/app/app.js for the no-data case by adding '&role=' before concatenating the role.
+- [x] Update gsa/api.php getfirstcontent endpoint to use SHOW COLUMNS to dynamically fetch table columns, remove system columns ('id', 'created_at', 'updated_at', 'role'), and return them as JSON, ensuring it works even when no data exists.
+- [ ] Test the changes to verify the add modal opens on first entry when no data is present.

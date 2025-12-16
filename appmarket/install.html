@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plugin Installation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-indigo-600 to-purple-700 py-6 px-8 shadow-md">
+        <div class="container mx-auto flex items-center justify-between">
+            <h1 class="text-4xl font-semibold text-white tracking-tight">
+                Plugin Installation
+            </h1>
+        </div>
+    </header>
+    <!-- Add this after the header container div -->
+<div class="container mx-auto mt-4">
+    <a href="./" class="inline-flex items-center px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition duration-300 shadow-md">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+        </svg>
+        Back to Plugin Market
+    </a>
+</div>
+
+
+    <!-- Main Content -->
+    <main class="container mx-auto py-12 px-4">
+        <div class="bg-white rounded-lg shadow-xl p-8 max-w-4xl mx-auto">
+            <div class="flex items-center space-x-6 mb-8">
+                <img src="https://icons.iconarchive.com/icons/webalys/kameleon.pics/512/Vector-icon.png" 
+                     class="w-24 h-24 object-contain" 
+                     alt="Plugin Icon">
+                <div>
+                    <h2 class="text-3xl font-semibold text-gray-800" id="pluginTitle"></h2>
+                    <div class="flex items-center mt-2">
+                        <span class="text-yellow-500">⭐⭐⭐⭐⭐</span>
+                        <span class="ml-2 text-gray-600">5.0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-button-container flex justify-end mb-8">
+                <button id="installButton" 
+                        class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition duration-300 hidden items-center"
+                        onclick="donit()">
+                    <span>Install</span>
+                    <img id="ldi" src="ldi.gif" class="w-5 h-5 ml-2 hidden" alt="Loading">
+                </button>
+                <div id="loadingState" class="flex items-center">
+                    <img src="ldi.gif" class="w-5 h-5" alt="Loading">
+                </div>
+            </div>
+
+            <div class="border-t border-gray-200 pt-8">
+                <h3 class="text-xl font-semibold mb-4 text-gray-800">Description</h3>
+                <div class="prose text-gray-600">
+                    <p>Enhance your ERP with this powerful plugin.</p>
+                    <!-- Description content -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-8 px-4 mt-12">
+        <div class="container mx-auto flex justify-between items-center">
+            <p class="text-sm">&copy; 2024 Plugin Market. All rights reserved.</p>
+            <div class="space-x-6">
+                <a href="#" class="hover:text-gray-300">Privacy Policy</a>
+                <a href="#" class="hover:text-gray-300">Terms of Service</a>
+                <a href="#" class="hover:text-gray-300">Contact Us</a>
+            </div>
+        </div>
+    </footer>
+
+    <div id="prg" class="fixed top-0 left-0 w-full z-50 hidden">
+        <div class="h-1 bg-indigo-600 animate-pulse"></div>
+    </div>
+<script>
+   // Plugin Manager Class
+class PluginManager {
+    constructor() {
+        this.pluginName = new URLSearchParams(window.location.search).get('q');
+        this.elements = {
+            title: document.getElementById('pluginTitle'),
+            description: document.querySelector('.prose'),
+            installButton: document.getElementById('installButton'),
+            buttonText: document.getElementById('installButton').querySelector('span'),
+            progress: document.getElementById('prg'),
+            loader: document.getElementById('ldi'),
+            loadingState: document.getElementById('loadingState'),
+            pluginIcon: document.querySelector('img[alt="Plugin Icon"]')
+        };
+    }
+
+    init() {
+        this.loadPluginDetails();
+        this.checkPluginStatus();
+    }
+
+    loadPluginDetails() {
+        this.elements.title.textContent = this.pluginName;
+        this.loadDescription();
+        this.loadPluginIcon();
+    }
+
+    loadDescription() {
+        fetch(`${this.pluginName}/readme.txt`)
+            .then(response => response.text())
+            .then(content => {
+                this.elements.description.innerHTML = content
+                    .split('\n')
+                    .map(line => `<p>${line}</p>`)
+                    .join('');
+            })
+            .catch(() => {
+                this.elements.description.innerHTML = '<p>No description available</p>';
+            });
+    }
+
+    loadPluginIcon() {
+    console.log('Plugin Name:', this.pluginName);
+    const pluginPath = `${this.pluginName}`;
+    console.log('Searching Directory:', pluginPath);
+    
+    // Try direct image paths
+    const imageExtensions = ['png', 'jpg', 'jpeg'];
+    const checkImage = (ext) => {
+        const testUrl = `${pluginPath}/logo.${ext}`;
+        console.log('Checking:', testUrl);
+        return fetch(testUrl, { method: 'HEAD' })
+            .then(response => response.ok ? testUrl : null)
+            .catch(() => null);
+    };
+
+    Promise.all(imageExtensions.map(checkImage))
+        .then(results => {
+            console.log('Image check results:', results);
+            const foundImage = results.find(url => url !== null);
+            if (foundImage) {
+                console.log('Found image:', foundImage);
+                this.elements.pluginIcon.src = foundImage;
+            }
+        });
+}
+
+
+
+    toggleLoaders(show) {
+        this.elements.progress.style.display = show ? 'block' : 'none';
+        this.elements.loader.style.display = show ? 'inline-block' : 'none';
+    }
+
+    setButtonVisibility(show) {
+        this.elements.installButton.style.display = show ? 'flex' : 'none';
+        this.elements.loadingState.style.display = show ? 'none' : 'flex';
+    }
+
+    updateButtonState(isInstalled) {
+        this.elements.installButton.style.display = 'flex';
+        this.elements.buttonText.innerText = isInstalled ? 'Uninstall' : 'Install';
+        this.elements.installButton.style.background = isInstalled ? '#dc3545' : '#5d8cbb';
+    }
+
+    checkPluginStatus() {
+        fetch('extractplugin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `plugin_name=${this.pluginName}&action=check`
+        })
+            .then(response => response.json())
+            .then(data => {
+                this.updateButtonState(data.exists);
+                this.setButtonVisibility(true);
+            })
+            .catch(() => {
+                this.updateButtonState(false);
+                this.setButtonVisibility(true);
+            });
+    }
+
+    async handleInstallation() {
+        const isInstalling = this.elements.buttonText.innerText === 'Install';
+        this.toggleLoaders(true);
+
+        try {
+            const response = await fetch('extractplugin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `plugin_name=${this.pluginName}&action=${isInstalling ? 'install' : 'delete'}`
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                this.updateButtonState(!isInstalling);
+                alert(isInstalling ? 'Plugin installed successfully!' : 'Plugin uninstalled successfully!');
+            } else {
+                alert('Operation failed: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('Request failed: ' + error);
+        } finally {
+            this.toggleLoaders(false);
+            this.checkPluginStatus();
+        }
+    }
+}
+
+// Initialize Plugin Manager
+document.addEventListener('DOMContentLoaded', () => {
+    const pluginManager = new PluginManager();
+    pluginManager.init();
+
+    // Attach installation handler
+    document.getElementById('installButton').onclick = () => pluginManager.handleInstallation();
+});
+</script>
+</body>
+</html>

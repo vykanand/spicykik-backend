@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Parser Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+    body { background-color: #EBEBF2; }
+    .json-item { font-family: monospace; margin: 2px 0; }
+    .json-key { color: blue; font-weight: bold; }
+    .json-type { color: green; }
+    .json-value { color: red; }
+    .toggle-btn { background: #f0f0f0; border: 1px solid #ccc; cursor: pointer; padding: 2px 6px; border-radius: 3px; }
+    .toggle-btn:hover { background: #e0e0e0; }
+    .selectable-path { cursor: pointer; padding: 2px 4px; border-radius: 3px; }
+    .selectable-path:hover { background: #ffffcc; }
+    .selectable-path.selected { background: #90EE90; font-weight: bold; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-6">
+  <div class="max-w-6xl mx-auto">
+    <a onclick="window.history.back()">
+      <img src="back-black.png" style="height: 25px;margin-left: 7px;margin-top: 20px;float: left;" alt="Back">
+    </a>
+    <div style="margin-left:5%">
+      <h1 class="text-3xl font-bold text-gray-900 mb-8" style="margin-top: 25px;">Parser Generator</h1>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">Step 1: Configure API Request</h2>
+      <div class="overflow-x-auto">
+        <table class="min-w-full table-auto">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request URL</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">HTTP Method</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Authentication</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr>
+              <td class="px-4 py-2">
+                <div class="flex">
+                  <input id="url" type="text" class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://api.example.com/endpoint" />
+                  <button id="copyUrlBtn" class="px-3 py-2 bg-gray-200 hover:bg-gray-300 border border-gray-300 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500" title="Copy URL">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                </div>
+              </td>
+              <td class="px-4 py-2">
+                <select id="method" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option>GET</option>
+                  <option>POST</option>
+                </select>
+              </td>
+              <td class="px-4 py-2">
+                <select id="authType" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="none">None</option>
+                  <option value="apikey">API Key</option>
+                  <option value="oauth">OAuth Bearer Token</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="3" class="px-4 py-2">
+                <div id="authFields" class="hidden space-y-2">
+                  <div id="apiKeyLabel" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700">API Key Header Name</label>
+                    <input id="apiKeyHeader" type="text" class="mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="X-API-Key" value="X-API-Key" />
+                    <label class="block text-sm font-medium text-gray-700 mt-2">API Key</label>
+                    <input id="apiKey" type="text" class="mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Your API Key" />
+                  </div>
+                  <div id="oauthTokenLabel" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700">Bearer Token</label>
+                    <input id="bearerToken" type="text" class="mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Your OAuth Bearer Token" />
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="3" class="px-4 py-2">
+                <label class="block text-sm font-medium text-gray-700">
+                  Query Parameters (key=value, one per line)
+                  <textarea id="queryParams" rows="3" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="key1=value1&#10;key2=value2"></textarea>
+                </label>
+              </td>
+            </tr>
+            <tr id="bodyRow" class="hidden">
+              <td colspan="3" class="px-4 py-2">
+                <label class="block text-sm font-medium text-gray-700">
+                  Request Body
+                  <textarea id="body" rows="4" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder='{"key":"value"}'></textarea>
+                </label>
+                <label class="block text-sm font-medium text-gray-700 mt-2">
+                  Content-Type
+                  <select id="contentType" class="mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="application/json">application/json</option>
+                    <option value="application/x-www-form-urlencoded">application/x-www-form-urlencoded</option>
+                  </select>
+                </label>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <button id="testBtn" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors">Test Request & View Response</button>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6 hidden" id="responseSection">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">Step 2: Select Data Path</h2>
+      <p class="text-gray-600 mb-4">Click on any array or object path in the response to select it as your data source:</p>
+      <div id="responseBody" class="bg-gray-50 p-4 rounded-md overflow-auto max-h-96"></div>
+      <div class="mt-4">
+        <strong class="text-gray-700">Selected Path:</strong> <span id="selectedPath" class="text-blue-600">None</span>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6 hidden" id="parserSection">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">Step 3: Save Parser</h2>
+      <label class="block text-sm font-medium text-gray-700">
+        Parser Name
+        <input id="parserName" type="text" class="mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full" placeholder="my_api_parser" />
+      </label>
+      <button id="saveParserBtn" class="mt-4 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors">Save Parser</button>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">Saved Parsers</h2>
+      <div id="parsersList" class="text-gray-500">No parsers saved yet.</div>
+    </div>
+  </div>
+
+<script>
+  let responseData = null;
+  let selectedDataPath = null;
+  let parsers = {};
+
+  function loadParsers() {
+    try {
+      parsers = {};
+      const keys = Object.keys(localStorage).filter(key => key.startsWith('parser:'));
+      for (const key of keys) {
+        const data = localStorage.getItem(key);
+        if (data) {
+          const parserName = key.replace('parser:', '');
+          parsers[parserName] = JSON.parse(data);
+        }
+      }
+      displayParsers();
+    } catch (err) {
+      console.log('No parsers found or error loading:', err);
+      displayParsers();
+    }
+  }
+
+  function displayParsers() {
+    const list = document.getElementById('parsersList');
+    if (Object.keys(parsers).length === 0) {
+      list.innerHTML = '<div class="text-center py-8 text-gray-500">No parsers saved yet.</div>';
+      return;
+    }
+
+    let html = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">';
+    for (const name in parsers) {
+      const p = parsers[name];
+      html += `
+        <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
+          <div class="bg-gradient-to-r from-blue-500 to-purple-600 p-4">
+            <h3 class="text-lg font-semibold text-white">${name}</h3>
+          </div>
+          <div class="p-4">
+            <div class="space-y-2 mb-4">
+              <div class="flex items-center">
+                <span class="text-sm font-medium text-gray-500 w-16">URL:</span>
+                <div class="flex ml-2 flex-1">
+                  <button onclick="editUrl('${name}')" class="px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-l-md focus:outline-none focus:ring-1 focus:ring-blue-500" title="Edit URL">Edit</button>
+                  <input id="urlInput-${name}" type="text" value="${p.url}" class="flex-1 px-2 py-1 text-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500" disabled />
+                  <button id="saveUrlBtn-${name}" onclick="saveUrl('${name}')" class="px-2 py-1 bg-green-500 hover:bg-green-600 text-white text-sm font-medium focus:outline-none focus:ring-1 focus:ring-green-500" title="Save URL" style="display:none">Save</button>
+                  <button onclick="copyUrl('${p.url}', '${name}')" class="px-2 py-1 bg-gray-200 hover:bg-gray-300 border border-gray-300 rounded-r-md focus:outline-none focus:ring-1 focus:ring-blue-500" title="Copy URL">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="flex items-center">
+                <span class="text-sm font-medium text-gray-500 w-16">Method:</span>
+                <span class="text-sm text-gray-900 ml-2">${p.method}</span>
+              </div>
+              <div class="flex items-center">
+                <span class="text-sm font-medium text-gray-500 w-16">Auth:</span>
+                <span class="text-sm text-gray-900 ml-2">${p.authType}</span>
+              </div>
+              <div class="flex items-center">
+                <span class="text-sm font-medium text-gray-500 w-16">Path:</span>
+                <span class="text-sm text-gray-900 ml-2 truncate" title="${p.dataPath || 'root'}">${p.dataPath || 'root'}</span>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="editParser('${name}')" class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors">Edit</button>
+              <button onclick="deleteParser('${name}')" class="bg-red-500 hover:bg-red-600 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors">Delete</button>
+              <button onclick="window.location.href='testparser.html'" class="bg-green-500 hover:bg-green-600 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors">Test</button>
+            </div>
+          </div>
+        </div>`;
+    }
+    html += '</div>';
+    list.innerHTML = html;
+  }
+
+  window.editParser = function(name) {
+    const p = parsers[name];
+    document.getElementById('url').value = p.url;
+    document.getElementById('method').value = p.method;
+    document.getElementById('authType').value = p.authType;
+    document.getElementById('queryParams').value = p.queryParams || '';
+    document.getElementById('body').value = p.body || '';
+    document.getElementById('contentType').value = p.contentType || 'application/json';
+
+    if (p.authType === 'apikey') {
+      document.getElementById('apiKeyHeader').value = p.apiKeyHeader || 'X-API-Key';
+      document.getElementById('apiKey').value = p.apiKey || '';
+    } else if (p.authType === 'oauth') {
+      document.getElementById('bearerToken').value = p.bearerToken || '';
+    }
+
+    updateAuthFields();
+    updateBodyVisibility();
+
+    document.getElementById('parserName').value = name;
+    alert('Parser loaded for editing. Test the request to verify or modify data path.');
+  };
+
+  window.editUrl = function(name) {
+    const urlInput = document.getElementById(`urlInput-${name}`);
+    const saveBtn = document.getElementById(`saveUrlBtn-${name}`);
+    if (urlInput && saveBtn) {
+      urlInput.disabled = !urlInput.disabled;
+      if (!urlInput.disabled) {
+        urlInput.focus();
+        saveBtn.style.display = 'inline-block';
+      } else {
+        saveBtn.style.display = 'none';
+      }
+    }
+  };
+
+  window.saveUrl = function(name) {
+    const urlInput = document.getElementById(`urlInput-${name}`);
+    const saveBtn = document.getElementById(`saveUrlBtn-${name}`);
+    if (urlInput && saveBtn) {
+      const newUrl = urlInput.value.trim();
+      if (newUrl && parsers[name]) {
+        parsers[name].url = newUrl;
+        try {
+          localStorage.setItem('parser:' + name, JSON.stringify(parsers[name]));
+          urlInput.disabled = true;
+          saveBtn.style.display = 'none';
+          alert('URL updated successfully!');
+        } catch (err) {
+          alert('Error saving URL: ' + err.message);
+        }
+      } else {
+        alert('Invalid URL or parser not found.');
+      }
+    }
+  };
+
+  window.deleteParser = function(name) {
+    if (confirm(`Delete parser "${name}"?`)) {
+      try {
+        localStorage.removeItem('parser:' + name);
+        delete parsers[name];
+        displayParsers();
+      } catch (err) {
+        alert('Error deleting parser: ' + err.message);
+      }
+    }
+  };
+
+
+
+  function updateAuthFields() {
+    const authType = document.getElementById('authType').value;
+    const authFields = document.getElementById('authFields');
+    const apiKeyLabel = document.getElementById('apiKeyLabel');
+    const oauthTokenLabel = document.getElementById('oauthTokenLabel');
+    
+    if (authType === 'none') {
+      authFields.style.display = 'none';
+      apiKeyLabel.style.display = 'none';
+      oauthTokenLabel.style.display = 'none';
+    } else if (authType === 'apikey') {
+      authFields.style.display = 'block';
+      apiKeyLabel.style.display = 'block';
+      oauthTokenLabel.style.display = 'none';
+    } else if (authType === 'oauth') {
+      authFields.style.display = 'block';
+      apiKeyLabel.style.display = 'none';
+      oauthTokenLabel.style.display = 'block';
+    }
+  }
+
+  function updateBodyVisibility() {
+    const method = document.getElementById('method').value;
+    const bodyRow = document.getElementById('bodyRow');
+    bodyRow.style.display = method === 'POST' ? 'table-row' : 'none';
+  }
+
+  document.getElementById('authType').addEventListener('change', updateAuthFields);
+  document.getElementById('method').addEventListener('change', updateBodyVisibility);
+
+  function getValueAtPath(obj, path) {
+    if (!path) return obj;
+    const parts = path.split('.');
+    let current = obj;
+    for (const part of parts) {
+      if (current === null || current === undefined) return undefined;
+      if (part.startsWith('[') && part.endsWith(']')) {
+        const index = parseInt(part.slice(1, -1));
+        current = current[index];
+      } else {
+        current = current[part];
+      }
+    }
+    return current;
+  }
+
+  function createJsonTree(data, key = '', level = 0, path = '') {
+    let html = '';
+    if (typeof data === 'object' && data !== null) {
+      const isArray = Array.isArray(data);
+      const toggleId = `toggle-${Math.random().toString(36).substr(2, 9)}`;
+      const currentPath = path ? `${path}.${key}` : key;
+      const displayPath = currentPath || 'root';
+      
+      html += `<div class="json-item" style="margin-left: ${level * 20}px;">`;
+      if (key) {
+        html += `<input type="checkbox" class="select-path-checkbox" data-path="${currentPath}"> <span class="json-key selectable-path" data-path="${currentPath}" title="Click to select: ${displayPath}">${key}:</span> `;
+      } else {
+        html += `<input type="checkbox" class="select-path-checkbox" data-path=""> <span class="json-key selectable-path" data-path="" title="Click to select: root">root:</span> `;
+      }
+      html += `<span class="json-type">${isArray ? 'Array[' + data.length + ']' : 'Object'}</span> <button class="toggle-btn" data-toggle="${toggleId}">${isArray ? '[' : '{'}</button>`;
+      html += `<div id="${toggleId}" class="json-children" style="display: none;">`;
+      
+      if (isArray) {
+        data.forEach((item, index) => {
+          html += createJsonTree(item, `[${index}]`, level + 1, currentPath);
+        });
+      } else {
+        Object.keys(data).forEach(k => {
+          html += createJsonTree(data[k], k, level + 1, currentPath);
+        });
+      }
+      html += `</div></div>`;
+    } else {
+      html += `<div class="json-item" style="margin-left: ${level * 20}px;">`;
+      if (key) {
+        html += `<span class="json-key">${key}:</span> `;
+      }
+      html += `<span class="json-value">${typeof data === 'string' ? `"${data}"` : String(data)}</span>`;
+      html += `</div>`;
+    }
+    return html;
+  }
+
+  document.getElementById('testBtn').addEventListener('click', async () => {
+    const url = document.getElementById('url').value.trim();
+    if (!url) {
+      alert('Please enter a request URL.');
+      return;
+    }
+
+    let requestUrl = url;
+    const method = document.getElementById('method').value;
+    const authType = document.getElementById('authType').value;
+    const queryParamsText = document.getElementById('queryParams').value.trim();
+
+    if (queryParamsText) {
+      const params = new URLSearchParams();
+      queryParamsText.split('\n').forEach(line => {
+        const [key, ...rest] = line.split('=');
+        if (key && rest.length) {
+          params.append(key.trim(), rest.join('=').trim());
+        }
+      });
+      
+      if (requestUrl.includes('?')) {
+        requestUrl += '&' + params.toString();
+      } else {
+        requestUrl += '?' + params.toString();
+      }
+    }
+
+    const headers = {};
+
+    if (authType === 'apikey') {
+      const apiKey = document.getElementById('apiKey').value.trim();
+      const apiKeyHeader = document.getElementById('apiKeyHeader').value.trim() || 'X-API-Key';
+      if (!apiKey) {
+        alert('Please enter the API key.');
+        return;
+      }
+      headers[apiKeyHeader] = apiKey;
+    } else if (authType === 'oauth') {
+      const token = document.getElementById('bearerToken').value.trim();
+      if (!token) {
+        alert('Please enter the Bearer token.');
+        return;
+      }
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    let body = null;
+    if (method === 'POST') {
+      const contentType = document.getElementById('contentType').value;
+      headers['Content-Type'] = contentType;
+      const bodyText = document.getElementById('body').value.trim();
+
+      if (contentType === 'application/json') {
+        try {
+          body = JSON.stringify(JSON.parse(bodyText));
+        } catch (e) {
+          alert('Invalid JSON body.');
+          return;
+        }
+      } else if (contentType === 'application/x-www-form-urlencoded') {
+        try {
+          const obj = JSON.parse(bodyText);
+          const params = new URLSearchParams();
+          for (const k in obj) {
+            params.append(k, obj[k]);
+          }
+          body = params.toString();
+        } catch {
+          const params = new URLSearchParams();
+          bodyText.split('\n').forEach(line => {
+            const [key, ...rest] = line.split('=');
+            if (key && rest.length) {
+              params.append(key.trim(), rest.join('=').trim());
+            }
+          });
+          body = params.toString();
+        }
+      }
+    }
+
+    document.getElementById('responseBody').innerHTML = 'Loading...';
+
+    try {
+      const response = await fetch(requestUrl, {
+        method,
+        headers,
+        body,
+      });
+
+      const contentType = response.headers.get('content-type') || '';
+      let responseBody;
+
+      if (contentType.includes('application/json')) {
+        responseBody = await response.json();
+      } else {
+        responseBody = await response.text();
+      }
+
+      responseData = responseBody;
+      selectedDataPath = null;
+      
+      document.getElementById('responseBody').innerHTML = createJsonTree(responseBody);
+      document.getElementById('responseSection').style.display = 'block';
+      document.getElementById('selectedPath').textContent = 'None';
+
+      document.querySelectorAll('.toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const target = document.getElementById(btn.dataset.toggle);
+          if (target.style.display === 'none') {
+            target.style.display = 'block';
+            btn.textContent = btn.textContent === '{' ? '}' : ']';
+          } else {
+            target.style.display = 'none';
+            btn.textContent = btn.textContent === '}' ? '{' : '[';
+          }
+        });
+      });
+
+      document.querySelectorAll('.select-path-checkbox').forEach(cb => {
+        cb.addEventListener('change', () => {
+          if (cb.checked) {
+            document.querySelectorAll('.select-path-checkbox').forEach(otherCb => {
+              if (otherCb !== cb) otherCb.checked = false;
+            });
+            document.querySelectorAll('.selectable-path').forEach(e => e.classList.remove('selected'));
+            const pathEl = cb.parentElement.querySelector('.selectable-path');
+            pathEl.classList.add('selected');
+            selectedDataPath = cb.dataset.path;
+            document.getElementById('selectedPath').textContent = selectedDataPath || 'root';
+            document.getElementById('parserSection').style.display = 'block';
+            // Console log the selected JSON data
+            const selectedData = getValueAtPath(responseData, selectedDataPath);
+            console.log('Selected JSON data:', selectedData);
+          } else {
+            selectedDataPath = null;
+            document.getElementById('selectedPath').textContent = 'None';
+            document.getElementById('parserSection').style.display = 'none';
+          }
+        });
+      });
+
+      document.querySelectorAll('.selectable-path').forEach(el => {
+        el.addEventListener('click', () => {
+          document.querySelectorAll('.selectable-path').forEach(e => e.classList.remove('selected'));
+          el.classList.add('selected');
+          document.querySelectorAll('.select-path-checkbox').forEach(cb => cb.checked = false);
+          const checkbox = el.parentElement.querySelector('.select-path-checkbox');
+          if (checkbox) checkbox.checked = true;
+          selectedDataPath = el.dataset.path;
+          document.getElementById('selectedPath').textContent = selectedDataPath || 'root';
+          document.getElementById('parserSection').style.display = 'block';
+          // Console log the selected JSON data
+          const selectedData = getValueAtPath(responseData, selectedDataPath);
+          console.log('Selected JSON data:', selectedData);
+        });
+      });
+
+    } catch (err) {
+      document.getElementById('responseBody').innerHTML = `Error: ${err.message}`;
+      document.getElementById('responseSection').style.display = 'block';
+    }
+  });
+
+  document.getElementById('saveParserBtn').addEventListener('click', () => {
+    const name = document.getElementById('parserName').value.trim();
+    if (!name) {
+      alert('Please enter a parser name.');
+      return;
+    }
+
+    const parser = {
+      url: document.getElementById('url').value.trim(),
+      method: document.getElementById('method').value,
+      authType: document.getElementById('authType').value,
+      queryParams: document.getElementById('queryParams').value.trim(),
+      body: document.getElementById('body').value.trim(),
+      contentType: document.getElementById('contentType').value,
+      dataPath: selectedDataPath ? `response.${selectedDataPath}` : 'response',
+    };
+
+    if (parser.authType === 'apikey') {
+      parser.apiKeyHeader = document.getElementById('apiKeyHeader').value.trim() || 'X-API-Key';
+      parser.apiKey = document.getElementById('apiKey').value.trim();
+    } else if (parser.authType === 'oauth') {
+      parser.bearerToken = document.getElementById('bearerToken').value.trim();
+    }
+
+    try {
+      localStorage.setItem('parser:' + name, JSON.stringify(parser));
+      parsers[name] = parser;
+      displayParsers();
+      alert('Parser saved successfully!');
+      document.getElementById('parserName').value = '';
+    } catch (err) {
+      alert('Error saving parser: ' + err.message);
+    }
+  });
+
+  document.getElementById('copyUrlBtn').addEventListener('click', () => {
+    const urlInput = document.getElementById('url');
+    urlInput.select();
+    document.execCommand('copy');
+    alert('URL copied to clipboard!');
+  });
+
+  window.copyUrl = function(url) {
+    const tempInput = document.createElement('input');
+    tempInput.value = url;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    document.execCommand('copy');
+    document.body.removeChild(tempInput);
+    alert('URL copied to clipboard!');
+  };
+
+  updateAuthFields();
+  updateBodyVisibility();
+  loadParsers();
+</script>
+
+</body>
+</html>

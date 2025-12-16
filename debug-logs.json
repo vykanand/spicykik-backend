@@ -1,0 +1,15 @@
+{
+  "consoleMessages": [
+    "warning: An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing.",
+    "log: Raw user data from localStorage: null",
+    "warning: A preload for 'https://code.jquery.com/jquery-3.6.0.min.js' is found, but is not used due to an integrity mismatch.",
+    "error: A bad HTTP response code (404) was received when fetching the script.",
+    "log: ServiceWorker registration failed:  TypeError: Failed to register a ServiceWorker for scope ('http://localhost:9001/') with script ('http://localhost:9001/sw.js'): A bad HTTP response code (404) was received when fetching the script.",
+    "warning: The resource https://code.jquery.com/jquery-3.6.0.min.js was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+  ],
+  "errors": [
+    "Page error: Cannot read properties of null (reading 'style')",
+    "A bad HTTP response code (404) was received when fetching the script."
+  ],
+  "timestamp": "2025-09-14T19:48:45.640Z"
+}

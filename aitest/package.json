@@ -1,0 +1,20 @@
+{
+  "name": "aitest",
+  "version": "1.0.0",
+  "description": "Automated testing and debugging with Playwright and AI integration",
+  "main": "automate-debug.js",
+  "scripts": {
+    "debug": "node automate-debug.js",
+    "debug:window": "node debug-window.js",
+    "test": "npx playwright test",
+    "test:debug": "npx playwright test tests/debug.spec.js",
+    "test:visual": "npx playwright test tests/visual.spec.js"
+  },
+  "keywords": ["playwright", "testing", "debugging", "ai"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^24.4.0"
+  }
+}

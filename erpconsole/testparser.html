@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Parser Runner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #EBEBF2; }
+        .progress-container { margin: 10px 0; }
+        .progress-bar { width: 100%; background: #f0f0f0; border-radius: 4px; height: 20px; overflow: hidden; }
+        .progress-fill { height: 100%; background: #4CAF50; transition: width 0.3s; }
+        .progress-text { text-align: center; margin-top: 5px; font-size: 12px; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-6">
+    <div class="max-w-7xl mx-auto">
+        <a onclick="window.history.back()">
+            <img src="back-black.png" style="height: 25px;margin-left: 7px;margin-top: 20px;float: left;" alt="Back">
+        </a>
+        <div style="margin-left:5%">
+            <h1 class="text-3xl font-bold text-gray-900 mb-8" style="margin-top: 25px;">Parser Runner</h1>
+        </div>
+
+    <div id="globalLoader" class="text-center py-8 text-lg text-gray-600 hidden">Processing...</div>
+
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Select Parser</h2>
+        <select id="parserSelect" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">-- Select a Parser --</option>
+        </select>
+        <button id="loadParserBtn" class="ml-4 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors">Load Parser Info</button>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6 hidden" id="parserInfoSection">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Parser Information</h2>
+        <div class="bg-green-50 p-4 rounded-md mb-4" id="parserInfo"></div>
+        <div class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <label class="block">
+                    <span class="text-sm font-medium text-gray-700">Limit per page</span>
+                    <input type="number" id="limitInput" value="25" min="1" class="mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
+                </label>
+                <label class="block">
+                    <span class="text-sm font-medium text-gray-700">Starting Offset</span>
+                    <input type="number" id="offsetInput" value="0" min="0" class="mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
+                </label>
+                <label class="block">
+                    <span class="text-sm font-medium text-gray-700">Total Records to Fetch</span>
+                    <input type="number" id="totalInput" value="100" min="1" max="10000" class="mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
+                </label>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button id="fetchBtn" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors">Fetch Data</button>
+                <button id="refreshBtn" class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-md transition-colors hidden">Refresh Data</button>
+                <button id="exportBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors hidden">Export to CSV</button>
+            </div>
+            <div id="progressContainer" class="hidden">
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+                <div id="progressText" class="progress-text">Fetching data...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6 hidden" id="dataSection">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Data Preview</h2>
+        <div id="dataInfo" class="bg-gray-50 p-4 rounded-md mb-4"></div>
+        <div id="selectionSection" class="hidden">
+            <h3 class="text-lg font-medium text-gray-700 mb-2">Select Items to Display</h3>
+            <div class="flex gap-2 mb-4">
+                <button id="selectAllBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors">Select All</button>
+                <button id="deselectAllBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-md transition-colors">Deselect All</button>
+            </div>
+            <div id="itemSelection" class="space-y-2"></div>
+            <button id="displaySelectedBtn" class="mt-4 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors">Display Selected Items</button>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6 hidden" id="tableSection">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Transposed Table</h2>
+        <div id="tableContainer"></div>
+    </div>
+
+    <script>
+        let parsers = {};
+        let currentParser = null;
+        let currentParserName = null;
+        let fetchedData = null;
+        let selectedItems = [];
+
+        function loadParsers() {
+            try {
+                parsers = {};
+                const select = document.getElementById('parserSelect');
+                select.innerHTML = '<option value="">-- Select a Parser --</option>';
+
+                const keys = Object.keys(localStorage).filter(key => key.startsWith('parser:'));
+                for (const key of keys) {
+                    const data = localStorage.getItem(key);
+                    if (data) {
+                        const parserName = key.replace('parser:', '');
+                        try {
+                            parsers[parserName] = JSON.parse(data);
+                            const option = document.createElement('option');
+                            option.value = parserName;
+                            option.textContent = parserName;
+                            select.appendChild(option);
+                        } catch (parseErr) {
+                            console.error('Error parsing data for parser', parserName, ':', parseErr);
+                        }
+                    }
+                }
+
+                if (Object.keys(parsers).length === 0) {
+                    select.innerHTML = '<option value="">No parsers available</option>';
+                }
+            } catch (err) {
+                console.error('Error loading parsers:', err);
+                document.getElementById('parserSelect').innerHTML = '<option value="">Error loading parsers</option>';
+            }
+        }
+
+        function getValueAtPath(obj, path) {
+            if (!path) return obj;
+            // Strip 'response.' prefix if present
+            const cleanPath = path.startsWith('response.') ? path.substring(8) : path;
+            if (!cleanPath) return obj;
+
+            let current = obj;
+            let i = 0;
+            while (i < cleanPath.length) {
+                if (cleanPath[i] === '.') {
+                    i++;
+                    continue;
+                }
+                let key = '';
+                while (i < cleanPath.length && cleanPath[i] !== '.' && cleanPath[i] !== '[') {
+                    key += cleanPath[i];
+                    i++;
+                }
+                if (key) {
+                    current = current[key];
+                }
+                if (cleanPath[i] === '[') {
+                    i++; // skip '['
+                    let index = '';
+                    while (i < cleanPath.length && cleanPath[i] !== ']') {
+                        index += cleanPath[i];
+                        i++;
+                    }
+                    if (cleanPath[i] === ']') {
+                        i++; // skip ']'
+                    }
+                    current = current[parseInt(index)];
+                }
+                if (current === null || current === undefined) return undefined;
+            }
+            return current;
+        }
+
+        function displayParserInfo(parser) {
+            const info = document.getElementById('parserInfo');
+            info.innerHTML = `
+      <div class="mb-2">
+        <strong>URL:</strong>
+        <div class="flex mt-1">
+          <button id="editUrlBtn" class="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500" title="Edit URL">Edit</button>
+          <input id="parserUrlInput" type="text" value="${parser.url}" class="flex-1 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" disabled />
+          <button id="copyParserUrlBtn" class="px-3 py-2 bg-gray-200 hover:bg-gray-300 border border-gray-300 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500" title="Copy URL">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <strong>Method:</strong> ${parser.method}<br>
+      <strong>Authentication:</strong> ${parser.authType}<br>
+      <strong>Data Path:</strong> ${parser.dataPath || 'response'}<br>
+      ${parser.queryParams ? '<strong>Query Params:</strong> Yes<br>' : ''}
+      ${parser.method === 'POST' && parser.body ? '<strong>Request Body:</strong> Yes<br>' : ''}
+    `;
+            document.getElementById('parserInfoSection').classList.remove('hidden');
+
+            // Add event listener for edit button
+            document.getElementById('editUrlBtn').addEventListener('click', () => {
+                const urlInput = document.getElementById('parserUrlInput');
+                urlInput.disabled = !urlInput.disabled;
+                if (!urlInput.disabled) {
+                    urlInput.focus();
+                }
+            });
+
+            // Add event listener for copy button
+            document.getElementById('copyParserUrlBtn').addEventListener('click', () => {
+                const urlInput = document.getElementById('parserUrlInput');
+                urlInput.select();
+                document.execCommand('copy');
+                alert('URL copied to clipboard!');
+            });
+        }
+
+        async function fetchDataWithPagination(parser, limit, startOffset, totalToFetch) {
+            const allData = [];
+            let currentOffset = startOffset;
+            const maxRecords = totalToFetch;
+
+            // Show progress bar
+            document.getElementById('progressContainer').style.display = 'block';
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+
+            while (allData.length < maxRecords) {
+                // Update progress
+                const progress = Math.min((allData.length / maxRecords) * 100, 100);
+                progressFill.style.width = progress + '%';
+                progressText.textContent = `Fetching data... ${allData.length}/${maxRecords} records`;
+                let requestUrl = parser.url;
+                const method = parser.method;
+
+                // Build query params
+                const params = new URLSearchParams();
+                if (parser.queryParams) {
+                    parser.queryParams.split('\n').forEach(line => {
+                        const [key, ...rest] = line.split('=');
+                        if (key && rest.length) {
+                            params.append(key.trim(), rest.join('=').trim());
+                        }
+                    });
+                }
+                params.set('limit', limit);
+                params.set('offset', currentOffset);
+
+                if (requestUrl.includes('?')) {
+                    requestUrl += '&' + params.toString();
+                } else {
+                    requestUrl += '?' + params.toString();
+                }
+
+                const headers = {};
+
+                if (parser.authType === 'apikey' && parser.apiKey) {
+                    const headerName = parser.apiKeyHeader || 'X-API-Key';
+                    headers[headerName] = parser.apiKey;
+                } else if (parser.authType === 'oauth' && parser.bearerToken) {
+                    headers['Authorization'] = `Bearer ${parser.bearerToken}`;
+                }
+
+                let body = null;
+                if (method === 'POST' && parser.body) {
+                    const contentType = parser.contentType || 'application/json';
+                    headers['Content-Type'] = contentType;
+
+                    if (contentType === 'application/json') {
+                        try {
+                            body = JSON.stringify(JSON.parse(parser.body));
+                        } catch (e) {
+                            throw new Error('Invalid JSON body in parser');
+                        }
+                    } else if (contentType === 'application/x-www-form-urlencoded') {
+                        try {
+                            const obj = JSON.parse(parser.body);
+                            const paramsBody = new URLSearchParams();
+                            for (const k in obj) {
+                                paramsBody.append(k, obj[k]);
+                            }
+                            body = paramsBody.toString();
+                        } catch {
+                            const paramsBody = new URLSearchParams();
+                            parser.body.split('\n').forEach(line => {
+                                const [key, ...rest] = line.split('=');
+                                if (key && rest.length) {
+                                    paramsBody.append(key.trim(), rest.join('=').trim());
+                                }
+                            });
+                            body = paramsBody.toString();
+                        }
+                    }
+                }
+
+                console.log('Fetching URL:', requestUrl);
+
+                const response = await fetch(requestUrl, {
+                    method,
+                    headers,
+                    body,
+                });
+
+                if (!response.ok) {
+                    if (response.status === 429) {
+                        // Rate limited, wait and retry
+                        console.log('Rate limited, waiting 5 seconds...');
+                        await new Promise(resolve => setTimeout(resolve, 5000));
+                        continue; // Retry the same offset
+                    }
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const contentType = response.headers.get('content-type') || '';
+                let responseBody;
+
+                if (contentType.includes('application/json')) {
+                    responseBody = await response.json();
+                } else {
+                    responseBody = await response.text();
+                }
+
+                const data = getValueAtPath(responseBody, parser.dataPath);
+
+                if (Array.isArray(data)) {
+                    allData.push(...data);
+                    if (data.length < limit) {
+                        // No more data
+                        break;
+                    }
+                } else {
+                    // If not array, just add once
+                    allData.push(data);
+                    break;
+                }
+
+                currentOffset += limit;
+
+                // Add delay between requests to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+
+            // Hide progress bar after completion
+            document.getElementById('progressContainer').style.display = 'none';
+
+            return allData.slice(0, maxRecords);
+        }
+
+        function displayDataInfo(data) {
+            const infoDiv = document.getElementById('dataInfo');
+            const selectionSection = document.getElementById('selectionSection');
+
+            if (Array.isArray(data)) {
+                infoDiv.innerHTML = `<strong>Data Type:</strong> Array<br><strong>Items Count:</strong> ${data.length}`;
+
+                if (data.length > 0 && typeof data[0] === 'object') {
+                    const itemSelectionDiv = document.getElementById('itemSelection');
+                    let html = '';
+                    data.forEach((item, index) => {
+                        const preview = JSON.stringify(item).substring(0, 80);
+                        html += `<label style="display: block; margin: 5px 0;">
+            <input type="checkbox" class="item-checkbox" value="${index}" checked>
+            Item ${index}: ${preview}${preview.length >= 80 ? '...' : ''}
+          </label>`;
+                    });
+                    itemSelectionDiv.innerHTML = html;
+                    selectionSection.style.display = 'block';
+                    selectedItems = data.map((_, i) => i);
+                } else {
+                    selectionSection.style.display = 'none';
+                    generateTable(data);
+                }
+            } else if (typeof data === 'object' && data !== null) {
+                infoDiv.innerHTML = `<strong>Data Type:</strong> Object<br><strong>Keys Count:</strong> ${Object.keys(data).length}`;
+                selectionSection.style.display = 'none';
+                generateTable(data);
+            } else {
+                infoDiv.innerHTML = `<strong>Data Type:</strong> ${typeof data}<br><strong>Value:</strong> ${data}`;
+                selectionSection.style.display = 'none';
+                document.getElementById('tableContainer').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                document.getElementById('tableSection').style.display = 'block';
+            }
+
+            document.getElementById('dataSection').style.display = 'block';
+        }
+
+        async function generateTable(data) {
+            const container = document.getElementById('tableContainer');
+            let tableHTML = '';
+            let moduleData = null;
+            let insertData = null;
+
+            if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object') {
+                // Display all records
+                const displayData = data;
+                // Array of objects: keys as headers, each object as a row
+                const allKeys = new Set();
+                displayData.forEach(item => {
+                    if (typeof item === 'object' && item !== null) {
+                        Object.keys(item).forEach(key => allKeys.add(key));
+                    }
+                });
+
+                const keys = Array.from(allKeys);
+                // Filter out 'id' and sanitize field names for database compatibility
+                const filteredKeys = keys.filter(key => key !== 'id');
+                const sanitizedKeys = filteredKeys.map(key => key.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^[^a-zA-Z_]/, 'col_'));
+                moduleData = sanitizedKeys; // Store sanitized keys for module creation
+                insertData = data.map(item => {
+                    const newItem = { ...item };
+                    delete newItem.id;
+                    return newItem;
+                }); // Store data without 'id' for insertion
+                tableHTML = '<table><thead><tr>';
+                keys.forEach(key => {
+                    tableHTML += `<th>${key}</th>`;
+                });
+                tableHTML += '</tr></thead><tbody>';
+
+                displayData.forEach(item => {
+                    tableHTML += '<tr>';
+                    keys.forEach(key => {
+                        const value = item && item[key] !== undefined ? item[key] : '';
+                        tableHTML += `<td>${value}</td>`;
+                    });
+                    tableHTML += '</tr>';
+                });
+                tableHTML += '</tbody></table>';
+            } else if (typeof data === 'object' && data !== null) {
+                // Single object: keys as headers, one row with values
+                const keys = Object.keys(data);
+                moduleData = keys;
+                insertData = [data]; // Wrap in array for consistency
+                tableHTML = '<table><thead><tr>';
+                keys.forEach(key => {
+                    tableHTML += `<th>${key}</th>`;
+                });
+                tableHTML += '</tr></thead><tbody><tr>';
+                keys.forEach(key => {
+                    tableHTML += `<td>${data[key]}</td>`;
+                });
+                tableHTML += '</tr></tbody></table>';
+            } else if (Array.isArray(data)) {
+                // Array of primitives: treat as objects with "value" key
+                const displayData = data;
+                moduleData = ['value'];
+                insertData = data.map(item => ({ value: item })); // Convert to objects
+                tableHTML = '<table><thead><tr><th>Value</th></tr></thead><tbody>';
+                displayData.forEach(item => {
+                    tableHTML += `<tr><td>${item}</td></tr>`;
+                });
+                tableHTML += '</tbody></table>';
+            } else {
+                // Primitive: display as pre
+                tableHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+
+            // Wrap table in a scrollable container for dynamic width adaptation
+            container.innerHTML = `<div style="overflow-x: auto;">${tableHTML}</div>`;
+
+            if (moduleData && currentParser) {
+                // Check if module exists
+                const moduleName = currentParserName.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^[^a-zA-Z_]/, 'mod_');
+                console.log('Checking module existence for:', moduleName);
+                try {
+                    const response = await fetch('../check_nav.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `nav=${encodeURIComponent(moduleName)}`
+                    });
+                    const result = await response.json();
+                    console.log('Module check result:', result);
+
+                    if (result.exists) {
+                        console.log('Module exists, showing Sync Data button');
+                        // Module exists, show sync button
+                        const syncBtn = document.createElement('button');
+                        syncBtn.textContent = 'Sync Data';
+                        syncBtn.className = 'bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors mt-4';
+                        syncBtn.addEventListener('click', () => syncData(moduleData, insertData));
+                        container.appendChild(syncBtn);
+                    } else {
+                        console.log('Module does not exist, showing Create Module button');
+                        // Module does not exist, show create button
+                        const createBtn = document.createElement('button');
+                        createBtn.textContent = 'Create Module';
+                        createBtn.className = 'bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors mt-4';
+                        createBtn.addEventListener('click', () => createModule(moduleData, insertData));
+                        container.appendChild(createBtn);
+                    }
+                } catch (err) {
+                    console.error('Error checking module existence:', err);
+                    // Default to create module button
+                    const createBtn = document.createElement('button');
+                    createBtn.textContent = 'Create Module';
+                    createBtn.style.marginTop = '10px';
+                    createBtn.addEventListener('click', () => createModule(moduleData, insertData));
+                    container.appendChild(createBtn);
+                }
+            }
+
+            document.getElementById('tableSection').style.display = 'block';
+        }
+
+        // Event listeners
+        document.getElementById('loadParserBtn').addEventListener('click', async () => {
+            const selectedName = document.getElementById('parserSelect').value;
+            if (!selectedName) {
+                alert('Please select a parser.');
+                return;
+            }
+
+            const loadBtn = document.getElementById('loadParserBtn');
+            loadBtn.disabled = true;
+            loadBtn.textContent = 'Loading...';
+            document.getElementById('globalLoader').style.display = 'block';
+
+            try {
+                currentParser = parsers[selectedName];
+                currentParserName = selectedName;
+                displayParserInfo(currentParser);
+            } finally {
+                loadBtn.disabled = false;
+                loadBtn.textContent = 'Load Parser Info';
+                document.getElementById('globalLoader').style.display = 'none';
+            }
+        });
+
+        document.getElementById('fetchBtn').addEventListener('click', async () => {
+            if (!currentParser) {
+                alert('Please load a parser first.');
+                return;
+            }
+
+            const limit = parseInt(document.getElementById('limitInput').value);
+            const offset = parseInt(document.getElementById('offsetInput').value);
+            const total = parseInt(document.getElementById('totalInput').value);
+
+            if (isNaN(limit) || limit < 1 || limit > 1000) {
+                alert('Limit must be between 1 and 1000.');
+                return;
+            }
+            if (isNaN(offset) || offset < 0) {
+                alert('Offset must be 0 or greater.');
+                return;
+            }
+            if (isNaN(total) || total < 1 || total > 10000) {
+                alert('Total records must be between 1 and 10000.');
+                return;
+            }
+
+            const fetchBtn = document.getElementById('fetchBtn');
+            fetchBtn.disabled = true;
+            fetchBtn.textContent = 'Fetching...';
+            document.getElementById('globalLoader').style.display = 'block';
+
+            try {
+                fetchedData = await fetchDataWithPagination(currentParser, limit, offset, total);
+                displayDataInfo(fetchedData);
+                document.getElementById('refreshBtn').style.display = 'inline-block';
+                document.getElementById('exportBtn').style.display = 'inline-block';
+            } catch (err) {
+                document.getElementById('dataInfo').innerHTML = `<div class="error">Error fetching data: ${err.message}</div>`;
+                document.getElementById('dataSection').style.display = 'block';
+            } finally {
+                fetchBtn.disabled = false;
+                fetchBtn.textContent = 'Fetch Data';
+                document.getElementById('globalLoader').style.display = 'none';
+            }
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            if (fetchedData) {
+                displayDataInfo(fetchedData);
+            }
+        });
+
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            if (!fetchedData) {
+                alert('No data to export.');
+                return;
+            }
+
+            let csvContent = 'data:text/csv;charset=utf-8,';
+            if (Array.isArray(fetchedData) && fetchedData.length > 0 && typeof fetchedData[0] === 'object') {
+                const keys = Object.keys(fetchedData[0]);
+                csvContent += keys.join(',') + '\n';
+                fetchedData.forEach(item => {
+                    const row = keys.map(key => item[key] || '').join(',');
+                    csvContent += row + '\n';
+                });
+            } else if (Array.isArray(fetchedData)) {
+                csvContent += 'Index,Value\n';
+                fetchedData.forEach((item, index) => {
+                    csvContent += `${index},${item}\n`;
+                });
+            } else if (typeof fetchedData === 'object' && fetchedData !== null) {
+                csvContent += 'Key,Value\n';
+                Object.keys(fetchedData).forEach(key => {
+                    csvContent += `${key},${fetchedData[key]}\n`;
+                });
+            } else {
+                csvContent += `Value\n${fetchedData}\n`;
+            }
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', 'data.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        document.getElementById('selectAllBtn').addEventListener('click', () => {
+            document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = true);
+            selectedItems = fetchedData.map((_, i) => i);
+        });
+
+        document.getElementById('deselectAllBtn').addEventListener('click', () => {
+            document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = false);
+            selectedItems = [];
+        });
+
+        document.getElementById('displaySelectedBtn').addEventListener('click', () => {
+            selectedItems = [];
+            document.querySelectorAll('.item-checkbox:checked').forEach(cb => {
+                selectedItems.push(parseInt(cb.value));
+            });
+
+            if (selectedItems.length === 0) {
+                alert('Please select at least one item.');
+                return;
+            }
+
+            const selectedData = selectedItems.map(index => fetchedData[index]);
+            generateTable(selectedData);
+        });
+
+        async function createModule(fields, data) {
+            const moduleName = currentParserName.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^[^a-zA-Z_]/, 'mod_');
+            if (!moduleName) {
+                alert('Parser name not found. Cannot create module.');
+                return;
+            }
+
+            // Disable button and show loading
+            const createBtn = document.querySelector('.section button');
+            if (createBtn) {
+                createBtn.disabled = true;
+                createBtn.textContent = 'Creating Module...';
+            }
+            document.getElementById('globalLoader').style.display = 'block';
+
+            try {
+                // Check if module already exists
+                console.log('Checking if module exists before creation:', moduleName);
+                const response = await fetch('../check_nav.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `nav=${encodeURIComponent(moduleName)}`
+                });
+                const result = await response.json();
+                console.log('Module existence check result:', result);
+                if (result.exists) {
+                    alert(`Module "${moduleName}" already exists. Use Sync Data instead.`);
+                    return;
+                }
+
+                // Create module
+                console.log('Creating module:', moduleName);
+                const createResponse = await fetch('../module.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `dest=${encodeURIComponent(moduleName)}&dta=${encodeURIComponent(JSON.stringify(fields))}`
+                });
+                const createResult = await createResponse.json();
+                console.log('Module creation response:', createResult);
+                if (createResult.response === 'success') {
+                    alert(`Module "${createResult.module}" created successfully!`);
+
+                    // Insert data into the new table with batch processing
+                    if (data && data.length > 0) {
+                        await insertDataBatch(moduleName, data);
+                    }
+                } else {
+                    alert(`Error creating module: ${createResult.error}`);
+                }
+            } catch (err) {
+                console.error('Error creating module:', err);
+                alert('Error creating module. Please try again.');
+            } finally {
+                // Re-enable button
+                if (createBtn) {
+                    createBtn.disabled = false;
+                    createBtn.textContent = 'Create Module';
+                }
+                document.getElementById('globalLoader').style.display = 'none';
+            }
+        }
+
+        async function syncData(fields, data) {
+            const moduleName = currentParserName.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^[^a-zA-Z_]/, 'mod_');
+            if (!moduleName) {
+                alert('Parser name not found. Cannot sync data.');
+                return;
+            }
+
+            // Upsert data into the existing table with batch processing (insert or update)
+            if (data && data.length > 0) {
+                await insertDataBatch(moduleName, data, 'upsert');
+            } else {
+                alert('No data to sync.');
+            }
+        }
+
+        async function insertDataBatch(tableName, data, action = 'insert') {
+            const batchSize = 500; // Increased batch size for scalability with millions of records
+            const maxConcurrency = 3; // Limit concurrent batches to avoid overwhelming server
+            const totalRecords = data.length;
+            let processed = 0;
+            let inserted = 0;
+            let updated = 0;
+            let skipped = 0;
+            let errors = 0;
+            let progressUpdateCounter = 0;
+            const progressUpdateInterval = 10; // Update progress every 10 batches for performance
+
+            console.log(`Starting data ${action} for ${totalRecords} records into ${tableName}`);
+
+            // Show progress container
+            const progressContainer = document.createElement('div');
+            progressContainer.className = 'progress-container';
+            progressContainer.innerHTML = `
+                <div class="progress-bar">
+                    <div class="progress-fill" id="insertProgressFill"></div>
+                </div>
+                <div class="progress-text" id="insertProgressText">${action === 'upsert' ? 'Upserting' : 'Inserting'} data...</div>
+            `;
+            document.getElementById('tableContainer').appendChild(progressContainer);
+
+            const progressFill = document.getElementById('insertProgressFill');
+            const progressText = document.getElementById('insertProgressText');
+
+            // Function to update progress safely (throttled for performance)
+            const updateProgress = (progress, text) => {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        progressFill.style.width = progress + '%';
+                        progressText.textContent = text;
+                        console.log(`Progress updated: ${text}`);
+                        resolve();
+                    }, 0);
+                });
+            };
+
+            // Process batches with controlled concurrency
+            const processBatch = async (batch, startIndex) => {
+                const batchJson = JSON.stringify(batch);
+
+                console.log(`Processing batch: ${startIndex} to ${startIndex + batch.length} (${batch.length} records)`);
+
+                try {
+                    console.log('Sending fetch request to insert_data.php');
+                    const response = await fetch('../insert_data.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `table=${encodeURIComponent(tableName)}&data=${encodeURIComponent(batchJson)}&batch_size=${batchSize}&start_from=${startIndex}&action=${action}`
+                    });
+
+                    console.log('Fetch response received, status:', response.status);
+
+                    if (!response.ok) {
+                        if (response.status === 429) {
+                            // Rate limited, wait and retry
+                            console.log('Rate limited, waiting 5 seconds...');
+                            await new Promise(resolve => setTimeout(resolve, 5000));
+                            return processBatch(batch, startIndex); // Retry
+                        }
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    console.log('Parsed JSON result:', result);
+
+                    if (result.response === 'progress') {
+                        // Continue
+                    } else if (result.response === 'success') {
+                        // Final batch
+                    } else {
+                        throw new Error(result.error || 'Unknown error in response');
+                    }
+
+                    // Update counts
+                    return {
+                        processed: batch.length,
+                        inserted: result.inserted || 0,
+                        updated: result.updated || 0,
+                        skipped: result.skipped || 0,
+                        errors: result.errors || 0,
+                        isFinal: result.response === 'success'
+                    };
+                } catch (err) {
+                    console.error('Error processing batch:', err);
+                    return {
+                        processed: batch.length,
+                        inserted: 0,
+                        updated: 0,
+                        skipped: 0,
+                        errors: batch.length,
+                        isFinal: false
+                    };
+                }
+            };
+
+            const batches = [];
+            for (let i = 0; i < totalRecords; i += batchSize) {
+                batches.push(data.slice(i, i + batchSize));
+            }
+
+            // Process batches with concurrency control
+            for (let i = 0; i < batches.length; i += maxConcurrency) {
+                const batchPromises = batches.slice(i, i + maxConcurrency).map((batch, idx) => {
+                    const startIndex = (i + idx) * batchSize;
+                    return processBatch(batch, startIndex);
+                });
+
+                const results = await Promise.all(batchPromises);
+
+                results.forEach(result => {
+                    processed += result.processed;
+                    inserted += result.inserted;
+                    updated += result.updated;
+                    skipped += result.skipped;
+                    errors += result.errors;
+                });
+
+                // Update progress periodically
+                progressUpdateCounter++;
+                if (progressUpdateCounter % progressUpdateInterval === 0 || i + maxConcurrency >= batches.length) {
+                    const progress = Math.min((processed / totalRecords) * 100, 100);
+                    const actionText = action === 'upsert' ? 'Upserting' : 'Inserting';
+                    const progressMsg = results.some(r => r.isFinal) ?
+                        `Completed! ${inserted} inserted, ${updated} updated, ${skipped} skipped, ${errors} errors` :
+                        `${actionText}... ${processed}/${totalRecords} records (${Math.round(progress)}%)`;
+                    await updateProgress(progress, progressMsg);
+                }
+
+                // Small delay between concurrent groups to reduce server load
+                if (i + maxConcurrency < batches.length) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+
+                // Check if any batch indicated completion
+                if (results.some(r => r.isFinal)) {
+                    console.log('Insertion completed successfully');
+                    break;
+                }
+            }
+
+            // If server stopped early, mark remaining as skipped
+            if (processed < totalRecords) {
+                const remaining = totalRecords - processed;
+                skipped += remaining;
+                console.log(`Server stopped early, marking remaining ${remaining} records as skipped`);
+            }
+
+            console.log(`Data ${action} finished. Total: ${totalRecords}, Processed: ${processed}, Inserted: ${inserted}, Updated: ${updated}, Skipped: ${skipped}, Errors: ${errors}`);
+
+            // Final progress update
+            await updateProgress(100, `Completed! ${inserted} inserted, ${updated} updated, ${skipped} skipped, ${errors} errors`);
+
+            // Hide progress after a delay
+            setTimeout(() => {
+                progressContainer.remove();
+                alert(`Data ${action} completed!\nInserted: ${inserted}\nUpdated: ${updated}\nSkipped: ${skipped}\nErrors: ${errors}`);
+            }, 2000);
+        }
+
+        // Initialize
+        loadParsers();
+
+        // Listen for storage changes to update parser list dynamically
+        window.addEventListener('storage', (e) => {
+            if (e.key && e.key.startsWith('parser:')) {
+                loadParsers();
+            }
+        });
+    </script>
+</body>
+</html>

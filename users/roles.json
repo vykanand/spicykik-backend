@@ -1,0 +1,9 @@
+[
+    {
+        "id": 1,
+        "name": "admin",
+        "description": "Full system access",
+        "modules": []
+    },
+    false
+]

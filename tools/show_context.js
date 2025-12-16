@@ -1,0 +1,1 @@
+const fs=require('fs');const s=fs.readFileSync('weather1/app/app.js','utf8');const start=13700;const end=13780;console.log('Context:', s.slice(start,end).replace(/\n/g,'\n'));console.log('---');console.log('Chars and codes:');for(let i=start;i<end;i++){console.log(i, s[i]);}

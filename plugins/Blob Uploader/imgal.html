@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Base64 Image Gallery</title>
+</head>
+<body>
+  <h1>Image Gallery</h1>
+  <div id="gallery"></div>
+
+  <script>
+    const binIDs = [
+      '68b9eeabae596e708fe2a413',  // Add your bin IDs here
+      // 'anotherBinId',
+      // ...
+    ];
+
+    const masterKey = '$2a$10$PqwDpYIYu0rJ4p9a/hHIRu1iX5eRr2E18hZmh/Id2QUThicDxgfxG';
+
+    async function fetchImage(binID) {
+      const res = await fetch(`https://api.jsonbin.io/v3/b/${binID}/latest`, {
+        headers: {
+          'X-Master-Key': masterKey
+        }
+      });
+      if (!res.ok) throw new Error('Failed to fetch bin ' + binID);
+      const json = await res.json();
+      return json.record.data;  // Assuming your base64 is stored under `data`
+    }
+
+    async function loadGallery() {
+      const gallery = document.getElementById('gallery');
+
+      for (const binID of binIDs) {
+        try {
+          const base64 = await fetchImage(binID);
+          const img = document.createElement('img');
+          img.src = `data:image/png;base64,${base64}`; // Adjust mime type if needed
+          img.style.maxWidth = '200px';
+          img.style.margin = '10px';
+          gallery.appendChild(img);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+
+    loadGallery();
+  </script>
+</body>
+</html>
