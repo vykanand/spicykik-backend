@@ -14,9 +14,11 @@
 :: IMPORTANT: This is destructive for this project's volumes. Do NOT run this if you want to preserve project data.
 
 setlocal
-set "PROJ=chirag-backend"
-set "COMPOSE_PROJECT_NAME=%PROJ%"
-set "WEB_PORT=9001"
+:: Read project configuration from project-config.json (projectName, webPort)
+for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "(Get-Content 'project-config.json' -Raw | ConvertFrom-Json).projectName"`) do set "COMPOSE_PROJECT_NAME=%%A"
+if "%COMPOSE_PROJECT_NAME%"=="" set "COMPOSE_PROJECT_NAME=chirag-backend"
+for /f "usebackq delims=" %%B in (`powershell -NoProfile -Command "(Get-Content 'project-config.json' -Raw | ConvertFrom-Json).webPort"`) do set "WEB_PORT=%%B"
+if "%WEB_PORT%"=="" set "WEB_PORT=9001"
 
 echo [WARN] This script will remove containers and volumes for project %COMPOSE_PROJECT_NAME% and start the stack attached.
 echo [WARN] If you do NOT want to remove volumes, stop now (Ctrl+C). Waiting 3 seconds...

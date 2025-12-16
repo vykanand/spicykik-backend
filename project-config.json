@@ -1,0 +1,11 @@
+{
+  "projectName": "spicykik-backend",
+  "webPort": 9001,
+  "database": {
+    "host": "junction.proxy.rlwy.net",
+    "username": "root",
+    "password": "cyIgFzjjbzRiVbiHkemiUCKftdfPqBOn",
+    "database": "spicykik",
+    "port": 14359
+  }
+}
