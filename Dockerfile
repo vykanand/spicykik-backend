@@ -39,12 +39,34 @@ COPY . /var/www/html/
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 777 /var/www/html
 
-# Create entrypoint script
-RUN echo '#!/bin/bash\n\
-    chmod -R 777 /var/www/html\n\
-    chown -R www-data:www-data /var/www/html\n\
-    apache2-foreground' > /usr/local/bin/docker-entrypoint.sh \
-    && chmod +x /usr/local/bin/docker-entrypoint.sh
+# Create robust entrypoint script to sanitize Apache MPMs and start Apache
+RUN cat > /usr/local/bin/docker-entrypoint.sh <<'EOF'
+#!/bin/bash
+set -e
+
+# Make sure web dir permissions are sane
+chown -R www-data:www-data /var/www/html || true
+chmod -R 755 /var/www/html || true
+
+# Comment out any explicit LoadModule lines that load MPM modules from custom configs.
+# This prevents configuration files copied from other systems loading a second MPM.
+grep -RIl "LoadModule[[:space:]]\+mpm_" /etc/apache2 || true
+for f in $(grep -RIl "LoadModule[[:space:]]\+mpm_" /etc/apache2 || true); do
+    sed -i -E "s/^[[:space:]]*(LoadModule[[:space:]]+mpm_[^ ]+)/# \1/" "$f" || true
+done
+
+# Remove any enabled mpm symlinks that may persist from previous images/volumes
+rm -f /etc/apache2/mods-enabled/mpm_*.load /etc/apache2/mods-enabled/mpm_*.conf || true
+
+# Disable common MPMs and explicitly enable the prefork MPM (required for mod_php)
+a2dismod mpm_event mpm_worker || true
+a2enmod mpm_prefork || true
+
+# Start Apache in foreground
+exec apache2-foreground
+EOF
+
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Configure PHP
 RUN echo "upload_max_filesize = 50M" > /usr/local/etc/php/conf.d/uploads.ini \
