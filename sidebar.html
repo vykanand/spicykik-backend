@@ -1,147 +1,168 @@
-    <!-- BEGIN: SideNavnew-->
-      <div class="_2Kb48">
-          <div class="_27nSa _3icF5">
-            <div class="_1XpNO i5Pw6">
-              <div class="_3fA3k">
-                <div class="_3jR6U">
-                  <!-- <a href="/w-l-gore-associates" class="_1Mg3b"><span class="_1cCJv _3NBR7"><img alt="W. L. Gore &amp; Associates" class="_2zb04" data-src="https://uploads1.craft.co/uploads/company/logo/2537xx/253768/normal_8f391cc55d2976dc.jpeg"/></span></a><span class="_2be81">W. L. Gore &amp; Associates</span> -->
-                </div>
-                <ul class="_3gCX-" id="apendsidebar">
-                  <!-- <li class="_3ZkKZ _3L0JD"><a href="/w-l-gore-associates" class="_3PomJ">Overview</a></li>
+<!-- BEGIN: SideNavnew-->
+<div class="_2Kb48">
+  <div class="_27nSa _3icF5">
+    <div class="_1XpNO i5Pw6">
+      <div class="_3fA3k">
+        <div class="_3jR6U">
+          <!-- <a href="/w-l-gore-associates" class="_1Mg3b"><span class="_1cCJv _3NBR7"><img alt="W. L. Gore &amp; Associates" class="_2zb04" data-src="https://uploads1.craft.co/uploads/company/logo/2537xx/253768/normal_8f391cc55d2976dc.jpeg"/></span></a><span class="_2be81">W. L. Gore &amp; Associates</span> -->
+        </div>
+        <ul class="_3gCX-" id="apendsidebar">
+          <!-- <li class="_3ZkKZ _3L0JD"><a href="/w-l-gore-associates" class="_3PomJ">Overview</a></li>
                   <li class="_3ZkKZ"><a href="/w-l-gore-associates/locations" class="_3PomJ">Crm</a></li>
                   <li class="_3ZkKZ"><a href="/w-l-gore-associates/executives" class="_3PomJ">Sales</a></li>
                   <li class="_3ZkKZ"><a href="/w-l-gore-associates/competitors" class="_3PomJ">Shipment</a></li> -->
-                  <!-- <li class="_22Bmu _1tKFW">
+          <!-- <li class="_22Bmu _1tKFW">
                     <button class="_3_Ozh lSrVJ _3Sq7J zYyzg">Follow</button>
                   </li> -->
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-    <!-- END: SideNav-->
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- END: SideNav-->
 
+<script type="text/javascript">
+  window.onload = function () {
+    function humanizeName(s) {
+      if (!s) return "";
+      // replace underscores with spaces, lowercase then title-case each word
+      var t = String(s).replace(/_/g, " ");
+      t = t.toLowerCase().replace(/\b\w/g, function (ch) {
+        return ch.toUpperCase();
+      });
+      return t;
+    }
+    fetch("erpapi?shownav=true")
+      .then((response) => response.json())
+      .then((data) => {
+        var uty = JSON.parse(localStorage.getItem("userdat"));
 
-    <script type="text/javascript">
-        
-window.onload = function() {
+        var atr = [];
 
-fetch('erpapi?shownav=true')
-    .then(response => response.json())
-    .then(data => {
+        if (uty.role == "admin") {
+          atr.push({
+            id: "193209332",
+            nav: "Dashboard",
+            urn: "plugins/",
+            created_at: "none",
+          });
 
+          for (var a = 0; a < data.length; a++) {
+            atr.push(data[a]);
+          }
 
-var uty = JSON.parse(localStorage.getItem('userdat'))
+          atr.push({
+            id: "193209355",
+            nav: "User Management",
+            urn: "users/group-manager",
+            created_at: "none",
+          });
+          atr.push({
+            id: "193209332",
+            nav: "Settings",
+            urn: "erpconsole/manage",
+            created_at: "none",
+          });
 
-var atr = []
+          // console.log(atr);
+          for (var i = 0; i < atr.length; i++) {
+            var div = $("<li>");
+            var mvr = "'" + atr[i].urn + "'";
+            var display = humanizeName(atr[i].nav);
+            div.append(
+              '<a id="' +
+                "side" +
+                i +
+                '" class="_3PomJ" onclick="switchclass(this,' +
+                mvr +
+                ',this.id)">' +
+                display +
+                "</a>"
+            );
 
-if(uty.role == 'admin'){
+            $("#apendsidebar").append(div);
+          }
+        }
+        //if admin ends
+        else {
+          atr.push({
+            id: "193209332",
+            nav: "Dashboard",
+            urn: "plugins/index.php",
+            created_at: "none",
+          });
+          for (var a = 0; a < data.length; a++) {
+            atr.push(data[a]);
+          }
+          // console.log(atr);
+          var fin = [];
 
-  atr.push({id: "193209332", nav: "Dashboard", urn: "plugins/", created_at: "none"})
+          var utx = JSON.parse(uty.access);
+          // console.log(utx);
+          ux = utx.unshift("Dashboard");
+          for (var j = 0; j < utx.length; j++) {
+            for (var i = 0; i < atr.length; i++) {
+              if (utx[j] == atr[i].nav) {
+                var div = $("<li>");
+                var mvr = "'" + atr[i].urn + "'";
+                var display = humanizeName(atr[i].nav);
+                div.append(
+                  '<a id="' +
+                    "side" +
+                    i +
+                    '" class="_3PomJ" onclick="switchclass(this,' +
+                    mvr +
+                    ',this.id)">' +
+                    display +
+                    "</a>"
+                );
 
+                $("#apendsidebar").append(div);
+              }
+            }
+          }
+        }
+        //else admin ends
 
- for (var a = 0; a < data.length; a++) {
-atr.push(data[a])
-}
+        if (!localStorage.getItem("liinfo")) {
+          document.getElementById("side0").classList.add("active");
+          document
+            .getElementById("side0")
+            .classList.add("gradient-45deg-indigo-light-blue");
+          document.getElementById("side0").classList.add("gradient-shadow");
 
-atr.push({id: "193209355", nav: "User Management", urn: "users/group-manager", created_at: "none"})
-atr.push({id: "193209332", nav: "Settings", urn: "erpconsole/manage", created_at: "none"})
+          if (!localStorage.getItem("nav")) {
+            document.getElementById("themeframe").src = "plugins/index.php";
+          } else {
+            document.getElementById("themeframe").src =
+              localStorage.getItem("nav");
+          }
 
+          var tinf = document.getElementById("side0").innerHTML;
+          localStorage.setItem("headinfo", tinf);
+        } else {
+          document
+            .getElementById(localStorage.getItem("liinfo"))
+            .classList.add("_3L0JD");
+          document
+            .getElementById(localStorage.getItem("liinfo"))
+            .classList.add("gradient-45deg-indigo-light-blue");
+          document
+            .getElementById(localStorage.getItem("liinfo"))
+            .classList.add("gradient-shadow");
+          document.getElementById("themeframe").src =
+            localStorage.getItem("nav");
+          // console.log(localStorage.getItem('nav'));
+        }
+      });
+  }; //end onload
+  function switchclass(elem, nav, liinfo) {
+    $("#slide-out a").removeClass();
 
-// console.log(atr);
-  for (var i = 0; i < atr.length; i++) {
-
-var div = $("<li>");
-var mvr = "'"+atr[i].urn+"'"
-div.append('<a id="'+'side'+i+'" class="_3PomJ" onclick="switchclass(this,'+mvr+',this.id)">'+atr[i].nav+'</a>')
-
-$("#apendsidebar").append(div);
-}
-
-
-}
-//if admin ends
-
-else{
-
-atr.push({id: "193209332", nav: "Dashboard", urn: "plugins/index.php", created_at: "none"})
-  for (var a = 0; a < data.length; a++) {
-atr.push(data[a])
-}
-// console.log(atr);
-var fin = []
-
-
-var utx = JSON.parse(uty.access) 
- // console.log(utx);
- ux = utx.unshift("Dashboard")
-for (var j = 0; j < utx.length; j++) {
- 
-  
-  for (var i = 0; i < atr.length; i++) {
-if (utx[j] == atr[i].nav){
-   
-
-var div = $("<li>");
-var mvr = "'"+atr[i].urn+"'"
-div.append('<a id="'+'side'+i+'" class="_3PomJ" onclick="switchclass(this,'+mvr+',this.id)">'+atr[i].nav+'</a>')
-
-$("#apendsidebar").append(div);
-
+    localStorage.setItem("nav", nav);
+    localStorage.setItem("liinfo", liinfo);
+    var tinf = document.getElementById(liinfo).innerHTML;
+    localStorage.setItem("headinfo", tinf);
+    window.location.reload();
   }
- 
-}
-
-}
-
-
-
-
-}
-//else admin ends
-
-
-
-
-if (!localStorage.getItem('liinfo')) {
-
-  document.getElementById('side0').classList.add("active");
-  document.getElementById('side0').classList.add("gradient-45deg-indigo-light-blue");
-  document.getElementById('side0').classList.add("gradient-shadow");
-
-  if(!localStorage.getItem('nav')){
-  document.getElementById('themeframe').src = 'plugins/index.php'
-}else{
-  document.getElementById('themeframe').src = localStorage.getItem('nav')
-}
-
-  var tinf = document.getElementById('side0').innerHTML
-  localStorage.setItem('headinfo', tinf)
-}else {
-  document.getElementById(localStorage.getItem('liinfo')).classList.add("_3L0JD");
-  document.getElementById(localStorage.getItem('liinfo')).classList.add("gradient-45deg-indigo-light-blue");
-  document.getElementById(localStorage.getItem('liinfo')).classList.add("gradient-shadow");
-  document.getElementById('themeframe').src = localStorage.getItem('nav')
-  // console.log(localStorage.getItem('nav'));
-}
-
-
-
-    });
-
-
-
-}//end onload
-           function switchclass(elem,nav,liinfo) {
-       $('#slide-out a').removeClass();
-
-  
-  localStorage.setItem('nav', nav)
-  localStorage.setItem('liinfo', liinfo)
-  var tinf = document.getElementById(liinfo).innerHTML
-  localStorage.setItem('headinfo', tinf)
-  window.location.reload()
-
-}
-
-    </script>
+</script>
