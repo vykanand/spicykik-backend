@@ -1576,16 +1576,43 @@ app.controller("mtctrl", function ($scope, $http, $location, $uibModal, $q, $tim
 
     // Wait for modal to be fully rendered
     modalPromise.rendered.then(function () {
+      // Ensure Angular picks up the model values after modal compilation
+      try {
+        $timeout(function() {
+          // reassign to a shallow copy to force watchers to re-evaluate and update inputs
+          $scope.edls = angular.copy($scope.edls || {});
+        }, 0);
+      } catch (e) {}
       $("#edtfrm")
         .find("input")
         .each(function () {
           var rawName = $(this).attr("name") || '';
           var fieldName = rawName.toLowerCase().replace(/ /g, "_");
-          var val = convertedData[fieldName];
+          // Resolve value robustly: try multiple key variants and a normalized-match fallback
+          var val;
+          var tryKeys = [rawName, rawName.toLowerCase(), fieldName, rawName.replace(/_/g, ' '), rawName.toLowerCase().replace(/_/g, ' ')];
+          for (var k = 0; k < tryKeys.length; k++) {
+            if (typeof convertedData[tryKeys[k]] !== 'undefined') {
+              val = convertedData[tryKeys[k]];
+              break;
+            }
+          }
+          if (typeof val === 'undefined') {
+            // final fallback: normalize keys by removing non-alphanumerics and compare
+            var targetNorm = rawName.toLowerCase().replace(/[^a-z0-9]/g, '');
+            for (var kk in convertedData) {
+              if (!convertedData.hasOwnProperty(kk)) continue;
+              var kkNorm = kk.toLowerCase().replace(/[^a-z0-9]/g, '');
+              if (kkNorm === targetNorm) {
+                val = convertedData[kk];
+                break;
+              }
+            }
+          }
           // determine effective type from fieldTypeMap or input attribute
           var type = ($scope.fieldTypeMap && ($scope.fieldTypeMap[rawName] || $scope.fieldTypeMap[rawName.toLowerCase()] || $scope.fieldTypeMap[fieldName])) || $(this).attr('type') || 'text';
 
-          // Data is already converted by convertObjectFields, just set values appropriately
+          // Data is already converted by convertObjectFields, set Angular model so ng-model bindings update
           if (type === 'date' || type === 'datetime-local') {
             // Date fields expect Date objects
             if (val instanceof Date) {
@@ -1596,23 +1623,15 @@ app.controller("mtctrl", function ($scope, $http, $location, $uibModal, $q, $tim
                   $scope.edls[rawName] = val;
                 }
               } catch (e) {
+                // fallback to DOM if Angular apply fails
                 $(this).val(val);
               }
             } else {
-              $(this).val(typeof val === 'undefined' ? '' : val);
+              if (!$scope.$$phase) { $scope.$apply(function(){ $scope.edls[rawName] = typeof val === 'undefined' ? '' : val; }); } else { $scope.edls[rawName] = typeof val === 'undefined' ? '' : val; }
             }
           } else if (type === 'time' || type === 'month' || type === 'week') {
             // Time/month/week fields expect strings
-            $(this).val(typeof val === 'undefined' ? '' : val);
-            try {
-              if (!$scope.$$phase) {
-                $scope.$apply(function () { $scope.edls[rawName] = val; });
-              } else {
-                $scope.edls[rawName] = val;
-              }
-            } catch (e) {
-              // ignore
-            }
+            if (!$scope.$$phase) { $scope.$apply(function(){ $scope.edls[rawName] = typeof val === 'undefined' ? '' : val; }); } else { $scope.edls[rawName] = typeof val === 'undefined' ? '' : val; }
           } else if (type === 'number' || type === 'range') {
             // Number fields expect numbers
             var numVal = (typeof val === 'number') ? val : Number(val);
@@ -1627,11 +1646,11 @@ app.controller("mtctrl", function ($scope, $http, $location, $uibModal, $q, $tim
                 $(this).val(val);
               }
             } else {
-              $(this).val(typeof val === 'undefined' ? '' : val);
+              if (!$scope.$$phase) { $scope.$apply(function(){ $scope.edls[rawName] = typeof val === 'undefined' ? '' : val; }); } else { $scope.edls[rawName] = typeof val === 'undefined' ? '' : val; }
             }
           } else {
             // All other fields (text, email, url, etc.) expect strings
-            $(this).val(typeof val === 'undefined' ? '' : val);
+            if (!$scope.$$phase) { $scope.$apply(function(){ $scope.edls[rawName] = typeof val === 'undefined' ? '' : val; }); } else { $scope.edls[rawName] = typeof val === 'undefined' ? '' : val; }
           }
         });
     });
