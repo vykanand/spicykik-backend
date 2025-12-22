@@ -709,5 +709,126 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         });
     </script>
+        <script>
+        (function(){
+            // Ensure loader doesn't hang: if the flag is set but load event doesn't fire, hide after timeout
+            try {
+                if (localStorage && localStorage.getItem('showLoaderUntilPageLoad')) {
+                    var overlay = document.getElementById('loadingOverlay');
+                    if (overlay) overlay.style.display = 'block';
+                    localStorage.removeItem('showLoaderUntilPageLoad');
+                    window.addEventListener('load', function(){ if (overlay) overlay.style.display = 'none'; });
+                    // fallback auto-hide after 6s
+                    setTimeout(function(){ if (overlay) overlay.style.display = 'none'; }, 6000);
+                }
+            } catch(e){}
+
+            // If jQuery failed to load (common on some mobile setups), provide a lightweight vanilla fallback
+            if (typeof window.jQuery === 'undefined') {
+                function showOverlay(){ var o=document.getElementById('loadingOverlay'); if(o) o.style.display='block'; }
+                function hideOverlay(){ var o=document.getElementById('loadingOverlay'); if(o) o.style.display='none'; }
+                function showAlert(type, msg){ var c=document.getElementById('alertContainer'); if(!c) return; c.innerHTML='<div class="alert alert-'+type+'">'+msg+'</div>'; setTimeout(function(){ if(c) c.innerHTML=''; },3000); }
+
+                // Clear mapping
+                document.querySelectorAll('.clear-mapping').forEach(function(btn){
+                    btn.addEventListener('click', function(){
+                        var field = btn.getAttribute('data-field');
+                        var sel = document.querySelector('select[name="mappings['+field+']"]'); if(sel) sel.value='';
+                        var sel2 = document.querySelector('select[name="fieldTypes['+field+']"]'); if(sel2) sel2.value='text';
+                        var chk = document.querySelector('input[name="fieldRequired['+field+']"]'); if(chk) chk.checked=false;
+                        var opt = document.querySelector('input[name="fieldOptions['+field+']"]'); if(opt) opt.value='';
+                        var optionsDiv = document.querySelector('.options-input[data-field="'+field+'"]'); if(optionsDiv) optionsDiv.style.display='none';
+                    });
+                });
+
+                // Drop column
+                document.querySelectorAll('.delete-column').forEach(function(btn){
+                    btn.addEventListener('click', function(){
+                        var field = btn.getAttribute('data-field');
+                        if (!confirm('Are you sure you want to DROP column "' + field + '"? This is destructive.')) return;
+                        showOverlay();
+                        fetch(window.location.href, {
+                            method: 'POST',
+                            headers: {'Content-Type':'application/x-www-form-urlencoded'},
+                            body: new URLSearchParams({ action: 'drop_column', column: field, confirm: '1' })
+                        }).then(function(r){ return r.json(); }).then(function(resp){
+                            hideOverlay();
+                            if (resp && resp.success) { showAlert('success', resp.message); setTimeout(function(){ location.reload(); },700); }
+                            else { showAlert('danger', resp ? resp.message : 'Failed to drop column'); }
+                        }).catch(function(){ hideOverlay(); showAlert('danger','Request failed'); });
+                    });
+                });
+
+                // Add column
+                var addBtn = document.getElementById('addColumnBtn');
+                if (addBtn) {
+                    addBtn.addEventListener('click', function(){
+                        var input = document.querySelector('#addFieldContainer input[name="column"]');
+                        var col = input ? input.value.trim() : '';
+                        var nameRegex = /^[A-Za-z_][A-Za-z0-9_]*$/;
+                        if (!nameRegex.test(col)) { showAlert('danger','Invalid column name. Use letters, numbers and underscores, must not start with a number.'); if (input) input.focus(); return; }
+                        addBtn.disabled = true;
+                        showOverlay();
+                        fetch(window.location.href, {
+                            method: 'POST',
+                            headers: {'Content-Type':'application/x-www-form-urlencoded'},
+                            body: new URLSearchParams({ action: 'add_column', column: col })
+                        }).then(function(r){ return r.json(); }).then(function(resp){
+                            hideOverlay(); addBtn.disabled = false;
+                            if (resp && resp.success) { showAlert('success', resp.message); setTimeout(function(){ location.reload(); },700); }
+                            else { showAlert('danger', resp ? resp.message : 'Failed to add column'); }
+                        }).catch(function(){ hideOverlay(); addBtn.disabled = false; showAlert('danger','Request failed'); });
+                    });
+                }
+
+                // Show/hide options input based on type
+                document.querySelectorAll('select[name^="fieldTypes["]').forEach(function(sel){
+                    sel.addEventListener('change', function(){
+                        var m = sel.name.match(/fieldTypes\[(.*)\]/);
+                        if (!m) return; var fieldName = m[1]; var selectedType = sel.value;
+                        var optionsDiv = document.querySelector('.options-input[data-field="'+fieldName+'"]');
+                        if (optionsDiv) {
+                            if (selectedType === 'select' || selectedType === 'radio' || selectedType === 'checkbox') optionsDiv.style.display = 'block'; else optionsDiv.style.display = 'none';
+                        }
+                    });
+                });
+
+                // Mapping form submit fallback (constructs payloads similar to jQuery version)
+                var mappingForm = document.getElementById('mappingForm');
+                if (mappingForm) {
+                    mappingForm.addEventListener('submit', function(e){
+                        e.preventDefault();
+                        showOverlay();
+                        var fd = new FormData(mappingForm);
+                        var mappings = {}, fieldTypes = {}, fieldRequired = {}, fieldOptions = {};
+                        for (var pair of fd.entries()) {
+                            var name = pair[0], val = pair[1];
+                            var m = name.match(/mappings\[(.*)\]/);
+                            var t = name.match(/fieldTypes\[(.*)\]/);
+                            var r = name.match(/fieldRequired\[(.*)\]/);
+                            var o = name.match(/fieldOptions\[(.*)\]/);
+                            if (m && val) mappings[m[1]] = val;
+                            if (t && val) fieldTypes[t[1]] = val;
+                            if (r) fieldRequired[r[1]] = true;
+                            if (o && val) fieldOptions[o[1]] = val;
+                        }
+                        var payload = new URLSearchParams();
+                        payload.append('action','save');
+                        payload.append('mappings', JSON.stringify(mappings));
+                        payload.append('fieldTypes', JSON.stringify(fieldTypes));
+                        payload.append('fieldRequired', JSON.stringify(fieldRequired));
+                        payload.append('fieldOptions', JSON.stringify(fieldOptions));
+
+                        fetch(window.location.href, { method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body: payload })
+                        .then(function(r){ return r.json(); }).then(function(resp){
+                            hideOverlay();
+                            if (resp && resp.success) { showAlert('success', resp.message); setTimeout(function(){ try{ localStorage.setItem('showLoaderUntilPageLoad','1'); }catch(e){}; window.location.href='./erpconsole/manage.php'; },700); }
+                            else { showAlert('danger', resp ? resp.message : 'An error occurred'); }
+                        }).catch(function(){ hideOverlay(); showAlert('danger','An error occurred while saving mappings'); });
+                    });
+                }
+            }
+        })();
+        </script>
 </body>
 </html>
