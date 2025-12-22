@@ -11,6 +11,41 @@ include "../config.php";
 
 $table_name = basename(getcwd());
 
+// Helper: fetch table columns (for validation)
+function get_table_columns($db, $table_name) {
+    $cols = array();
+    $res = mysqli_query($db, "SHOW COLUMNS FROM `" . mysqli_real_escape_string($db, $table_name) . "`") or die(mysqli_error($db));
+    while ($r = mysqli_fetch_assoc($res)) {
+        $cols[] = $r['Field'];
+    }
+    return $cols;
+}
+
+// Helper: build WHERE clause from allowed $_GET filters (only columns present in table)
+function build_where_from_get($db, $table_name, $allowed_columns) {
+    $where_clauses = array();
+    $params = array();
+    foreach ($_GET as $k => $v) {
+        if ($k === 'getpluginmap' || $k === 'getfieldtypes' || $k === 'getfieldrequired' || $k === 'getfieldoptions' || $k === 'getfirstcontent' || $k === 'getcontent' || $k === 'filters' || $k === 'distinct') continue;
+        // skip empty keys and control params
+        if ($v === '' || $v === null) continue;
+        if (in_array($k, $allowed_columns)) {
+            // support comma-separated values for IN queries
+            if (strpos($v, ',') !== false) {
+                $vals = array_map(function($x) use ($db) { return "'" . mysqli_real_escape_string($db, trim($x)) . "'"; }, explode(',', $v));
+                $where_clauses[] = "`$k` IN (" . implode(',', $vals) . ")";
+            } else {
+                $where_clauses[] = "`$k` = '" . mysqli_real_escape_string($db, $v) . "'";
+            }
+        }
+    }
+
+    if (count($where_clauses) > 0) {
+        return array('where' => ' WHERE ' . implode(' AND ', $where_clauses));
+    }
+    return array('where' => '');
+}
+
 // Get plugin mappings from navigation table
 if (isset($_GET["getpluginmap"])) {
     $sql = "SELECT plugin FROM navigation WHERE nav = '$table_name'";
@@ -134,15 +169,51 @@ if (isset($_GET["getfirstcontent"])) {
 if (isset($_GET["getcontent"]))
 {
 
-    $sql = "SELECT * FROM $table_name order by created_at DESC";
+    // allow filtering by any column via query params. e.g. ?getcontent&status=active&category=5
+    $allowed_columns = get_table_columns($db, $table_name);
+    $whereObj = build_where_from_get($db, $table_name, $allowed_columns);
+    $sql = "SELECT * FROM `$table_name`" . $whereObj['where'] . " ORDER BY created_at DESC";
     $result = mysqli_query($db, $sql) or die(mysqli_error($db));
     $fulldata = array();
-    while ($r = mysqli_fetch_assoc($result))
-    {
+    while ($r = mysqli_fetch_assoc($result)) {
         $fulldata[] = $r;
-
     }
     echo json_encode($fulldata);
+}
+
+// New: generic filters endpoint (alias for getcontent but clearer name)
+if (isset($_GET['filters'])) {
+    // usage: ?filters&field1=value1&field2=value2
+    $allowed_columns = get_table_columns($db, $table_name);
+    $whereObj = build_where_from_get($db, $table_name, $allowed_columns);
+    $sql = "SELECT * FROM `$table_name`" . $whereObj['where'] . " ORDER BY created_at DESC";
+    $result = mysqli_query($db, $sql) or die(mysqli_error($db));
+    $fulldata = array();
+    while ($r = mysqli_fetch_assoc($result)) {
+        $fulldata[] = $r;
+    }
+    echo json_encode($fulldata);
+}
+
+// New: distinct values endpoint
+if (isset($_GET['distinct'])) {
+    // usage: ?distinct=column_name&otherfield=val
+    $distinct_col = $_GET['distinct'];
+    $allowed_columns = get_table_columns($db, $table_name);
+    header('Content-Type: application/json');
+    if (!in_array($distinct_col, $allowed_columns)) {
+        echo json_encode(array('error' => 'invalid_column'));
+        exit();
+    }
+    // build where from other params
+    $whereObj = build_where_from_get($db, $table_name, $allowed_columns);
+    $sql = "SELECT DISTINCT `$distinct_col` FROM `$table_name`" . $whereObj['where'] . " ORDER BY `$distinct_col` ASC";
+    $result = mysqli_query($db, $sql) or die(mysqli_error($db));
+    $values = array();
+    while ($r = mysqli_fetch_assoc($result)) {
+        $values[] = $r[$distinct_col];
+    }
+    echo json_encode($values);
 }
 
 if (isset($_REQUEST["setcontent"]))

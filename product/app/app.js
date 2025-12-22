@@ -289,6 +289,30 @@ app.controller("mtctrl", function ($scope, $http, $location, $uibModal, $q, $tim
       return false;
     };
     
+    // Helper to determine if a field is a checkbox field
+    $scope.isCheckboxField = function (fieldName, value) {
+      // First check if field type is explicitly set to checkbox
+      var fieldType = $scope.getFieldType(fieldName);
+      if (fieldType === 'checkbox') {
+        return true;
+      }
+      // Also detect if value is an array (likely checkbox data)
+      if (Array.isArray(value) && value.length > 0) {
+        return true;
+      }
+      return false;
+    };
+    
+    // Helper to parse checkbox array values (converts string or array to array)
+    $scope.parseCheckboxValue = function (value) {
+      if (!value) return [];
+      if (Array.isArray(value)) return value;
+      if (typeof value === 'string') {
+        return value.split(',').map(function(v) { return v.trim(); }).filter(function(v) { return v !== ''; });
+      }
+      return [];
+    };
+    
     // Helper function to get options array for a field
     $scope.getFieldOptions = function (fieldName) {
       if (!$scope.fieldOptionsMap) return [];
@@ -1756,6 +1780,36 @@ app.controller("mtctrl", function ($scope, $http, $location, $uibModal, $q, $tim
       console.log("No mapping found, showing plugin selector:", iframeSrc);
     }
     
+    // Collect current form data to send to plugin
+    var formData = {};
+    var fieldTypes = {};
+    
+    if (source === "addModal" && $scope.addingNew) {
+      // For add modal, send all data that has been input by the user so far
+      formData = angular.copy($scope.addingNew);
+      
+      // Include field types for each field
+      Object.keys(formData).forEach(function(fieldName) {
+        var fieldType = $scope.getFieldType(fieldName);
+        fieldTypes[fieldName] = fieldType;
+      });
+      
+      console.log("Sending add modal data to plugin:", formData);
+      console.log("Field types for add modal:", fieldTypes);
+    } else if (source === "editModal" && $scope.edls) {
+      // For edit modal, send all the data from the edit modal
+      formData = angular.copy($scope.edls);
+      
+      // Include field types for each field
+      Object.keys(formData).forEach(function(fieldName) {
+        var fieldType = $scope.getFieldType(fieldName);
+        fieldTypes[fieldName] = fieldType;
+      });
+      
+      console.log("Sending edit modal data to plugin:", formData);
+      console.log("Field types for edit modal:", fieldTypes);
+    }
+    
     // Create plugin sidebar
     console.log("Creating plugin sidebar...");
     
@@ -1805,7 +1859,7 @@ app.controller("mtctrl", function ($scope, $http, $location, $uibModal, $q, $tim
         }
         
         // Handle URL/file path messages
-        if (typeof event.data === "string" && isNaN(event.data) && event.data !== 'close-plugin') {
+        if (typeof event.data === "string" && event.data !== 'close-plugin') {
           // Get the field name from the iframe URL, not localStorage
           const pluginFrame = document.getElementById('plugin-frame');
           let activeField = null;
@@ -1969,6 +2023,33 @@ app.controller("mtctrl", function ($scope, $http, $location, $uibModal, $q, $tim
       overlay.addEventListener("click", closeSidebar);
       closeBtn.addEventListener("click", closeSidebar);
       window.addEventListener("message", messageHandler);
+      
+      // Send form data to plugin when iframe loads
+      const pluginFrame = document.getElementById('plugin-frame');
+      if (pluginFrame) {
+        pluginFrame.onload = function() {
+          console.log('Plugin iframe loaded, sending form data...');
+          try {
+            // Send the form data and field types to the plugin
+            pluginFrame.contentWindow.postMessage({
+              type: 'form-data',
+              source: source,
+              fieldName: fieldName,
+              formData: formData,
+              fieldTypes: fieldTypes
+            }, '*');
+            console.log('Sent form data to plugin:', {
+              type: 'form-data',
+              source: source,
+              fieldName: fieldName,
+              formData: formData,
+              fieldTypes: fieldTypes
+            });
+          } catch (e) {
+            console.error('Error sending form data to plugin:', e);
+          }
+        };
+      }
       
       console.log("Plugin sidebar setup complete");
     } else {
