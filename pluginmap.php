@@ -685,7 +685,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 try { localStorage.setItem('showLoaderUntilPageLoad', '1'); } catch (e) {}
                                 (function(){
                                     var target = (response && response.redirect) ? response.redirect : ('https://' + window.location.host + '/erpconsole/manage.php');
-                                    try { window.top.location.href = target; } catch (e) { window.location.href = target; }
+                                    // Navigate within the current frame (do not force top-level navigation)
+                                    try { window.location.href = target; } catch (e) { /* fallback ignore */ }
                                 })();
                                 // safety: if navigation didn't happen for some reason, clear loader and re-enable
                                 setTimeout(function() { $('.btn-save').prop('disabled', false); hideLoader(); }, 5000);
@@ -850,7 +851,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 try{ localStorage.setItem('showLoaderUntilPageLoad','1'); }catch(e){}
                                 (function(){
                                     var target = (resp && resp.redirect) ? resp.redirect : ('https://' + window.location.host + '/erpconsole/manage.php');
-                                    try { window.top.location.href = target; } catch(e) { window.location.href = target; }
+                                    // Navigate within the current frame (do not force top-level navigation)
+                                    try { window.location.href = target; } catch (e) { /* fallback ignore */ }
                                 })();
                                 // safety: if navigation didn't occur, clear overlay after timeout
                                 setTimeout(function(){ hideOverlay(); }, 5000);
