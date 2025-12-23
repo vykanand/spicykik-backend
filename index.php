@@ -7,10 +7,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin</title>
 
-  <!-- Favicon -->
-  <link rel="icon" href="https://appsthink.com/fav.png" sizes="64x64" />
+  <!-- Favicon (use local asset to avoid external DNS failures) -->
+  <link rel="icon" href="logo.png" sizes="64x64" />
   <link rel="preload" as="image" href="logo.png" />
-  <link rel="preload" as="image" href="https://appsthink.com/fav.png" />
 
   <!-- CSS -->
   <link rel="stylesheet" href="assets/css/notie.min.css" />

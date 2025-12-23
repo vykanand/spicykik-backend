@@ -359,6 +359,37 @@
             display: flex;
             justify-content: flex-end;
         }
+        /* Improved list item (table cell) styling */
+        .table.card-table {
+            border-collapse: separate;
+            border-spacing: 0 12px;
+        }
+        .table.card-table tr { background: transparent; }
+        .table.card-table td, .table.card-table th {
+            vertical-align: middle;
+            border: 0;
+            padding: 0;
+        }
+        .cell-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 12px 14px;
+            box-shadow: 0 6px 18px rgba(13,16,77,0.06);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 140px;
+        }
+        .cell-card .cell-title { font-weight: 700; color: #0D104D; margin-right: 8px; }
+        .cell-card .cell-body { color: #334; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .badge-price { background: linear-gradient(90deg,#34c3a0,#1aa1ff); color: #fff; padding: 6px 10px; border-radius: 999px; font-weight: 700; }
+        .status-pill { padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #fff; }
+        .status-delivered { background: #2ecc71; }
+        .status-pending { background: #f39c12; }
+        .action-btn { background: transparent; border: 0; padding: 6px; margin-left: 6px; cursor: pointer; }
+        .action-btn img { width: 28px; height: 28px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.08)); }
+        /* make rows appear card-like by spacing table rows */
+        .table.card-table tr.card-row > td { padding: 6px 8px; }
     </style>
 </head>
 
@@ -441,28 +472,34 @@
                         <th style="padding: 9px;">Actions</th>
                     </tr>
                     <tr ng-repeat="data in filtered = (list | filter:expression) | startFrom:(currentPage-1)*entryLimit | limitTo:entryLimit"
-                        style="color: #2D3F56;">
+                        class="card-row" style="color: #2D3F56;">
 
                         <td ng-repeat="(key, column) in data">
-                            <!-- Display checkboxes for checkbox type fields or array values -->
-                            <div ng-if="isCheckboxField(key, column) && column" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                                <label ng-repeat="option in parseCheckboxValue(column)" style="display: inline-flex; align-items: center; margin: 0; padding: 4px 8px; background: #f0f0f0; border-radius: 4px;">
-                                    <input type="checkbox" checked disabled style="margin-right: 6px; pointer-events: none; opacity: 0.7;">
-                                    <span>{{ option }}</span>
-                                </label>
+                            <div class="cell-card">
+                                <!-- Show a compact title for common keys like Product_Name -->
+                                <div class="cell-title" ng-if="key.toLowerCase().indexOf('product') !== -1">{{ column }}</div>
+                                <div class="cell-body" ng-if="key.toLowerCase().indexOf('product') === -1">
+                                    <!-- Display checkboxes for checkbox type fields or array values -->
+                                    <div ng-if="isCheckboxField(key, column) && column" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                        <label ng-repeat="option in parseCheckboxValue(column)" style="display: inline-flex; align-items: center; margin: 0; padding: 4px 8px; background: #f6f8fb; border-radius: 999px; font-size: 13px; color: #334;">
+                                            <input type="checkbox" checked disabled style="margin-right: 6px; pointer-events: none; opacity: 0.7;">
+                                            <span>{{ option }}</span>
+                                        </label>
+                                    </div>
+                                    <!-- Display dates with formatting -->
+                                    <span ng-if="!isCheckboxField(key, column) && isDateString(column)">{{ column | dateDisplay }}</span>
+                                    <!-- Display regular text -->
+                                    <span ng-if="!isCheckboxField(key, column) && !isDateString(column)">{{ column }}</span>
+                                </div>
                             </div>
-                            <!-- Display dates with formatting -->
-                            <span ng-if="!isCheckboxField(key, column) && isDateString(column)">{{ column | dateDisplay }}</span>
-                            <!-- Display regular text -->
-                            <span ng-if="!isCheckboxField(key, column) && !isDateString(column)">{{ column }}</span>
                         </td>
-                        <td style="display: flex;">
-                            <a href="javascript:void(0);" style="cursor: pointer;text-decoration: none;"
-                                ng-click="editproduct(data)"> <img src="edit.png" style="width: 25px;height: 25px;">
-                            </a>
-                            <a href="javascript:void(0);" style="cursor: pointer;text-decoration: none;" id="btdel"
-                                ng-click="deleteproduct(data.id)"> <img src="delete.png"
-                                    style="width: 25px;height: 25px;"> </a>
+                        <td style="display: flex; align-items: center;">
+                            <button class="action-btn" ng-click="editproduct(data)" title="Edit">
+                                <img src="edit.png" alt="Edit">
+                            </button>
+                            <button class="action-btn" ng-click="deleteproduct(data.id)" title="Delete">
+                                <img src="delete.png" alt="Delete">
+                            </button>
                         </td>
 
                     </tr>

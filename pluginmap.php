@@ -639,37 +639,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     }
                 });
                 
-                    // Send AJAX request
-                    // Disable the save button, show loader and block UI
+                    // Send AJAX request using FormData so PHP receives arrays properly
                     $('.btn-save').prop('disabled', true);
                     showLoader();
 
+                    var fd = new FormData();
+                    fd.append('action', 'save');
+                    Object.keys(mappings).forEach(function(k){ fd.append('mappings['+k+']', mappings[k]); });
+                    Object.keys(fieldTypes).forEach(function(k){ fd.append('fieldTypes['+k+']', fieldTypes[k]); });
+                    Object.keys(fieldOptions).forEach(function(k){ fd.append('fieldOptions['+k+']', fieldOptions[k]); });
+                    Object.keys(fieldRequired).forEach(function(k){ fd.append('fieldRequired['+k+']', fieldRequired[k] ? '1' : '0'); });
+
                     $.ajax({
-                        url: window.location.href,
+                        url: window.location.pathname + window.location.search,
                         method: 'POST',
-                        data: {
-                            action: 'save',
-                            mappings: mappings,
-                            fieldTypes: fieldTypes,
-                            fieldRequired: fieldRequired,
-                            fieldOptions: fieldOptions
-                        },
+                        data: fd,
+                        processData: false,
+                        contentType: false,
                         dataType: 'json',
                         success: function(response) {
-                            if (response.success) {
+                            if (response && response.success) {
                                 showAlert('success', response.message);
-                                // short delay so user sees the message, then navigate back
                                 setTimeout(function() {
                                     try { localStorage.setItem('showLoaderUntilPageLoad', '1'); } catch (e) {}
                                     window.location.href = './erpconsole/manage.php';
                                 }, 700);
                             } else {
-                                showAlert('danger', response.message);
+                                console.error('Save response error:', response);
+                                showAlert('danger', response && response.message ? response.message : 'Failed to save configurations');
                                 $('.btn-save').prop('disabled', false);
                                 hideLoader();
                             }
                         },
-                        error: function() {
+                        error: function(xhr, status, err) {
+                            console.error('AJAX save failed', status, err, xhr.responseText);
                             showAlert('danger', 'An error occurred while saving mappings');
                             $('.btn-save').prop('disabled', false);
                             hideLoader();
@@ -747,11 +750,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         var field = btn.getAttribute('data-field');
                         if (!confirm('Are you sure you want to DROP column "' + field + '"? This is destructive.')) return;
                         showOverlay();
-                        fetch(window.location.href, {
-                            method: 'POST',
-                            headers: {'Content-Type':'application/x-www-form-urlencoded'},
-                            body: new URLSearchParams({ action: 'drop_column', column: field, confirm: '1' })
-                        }).then(function(r){ return r.json(); }).then(function(resp){
+                        var fd = new FormData(); fd.append('action','drop_column'); fd.append('column', field); fd.append('confirm','1');
+                        fetch(window.location.pathname + window.location.search, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function(r){ return r.json(); }).then(function(resp){
                             hideOverlay();
                             if (resp && resp.success) { showAlert('success', resp.message); setTimeout(function(){ location.reload(); },700); }
                             else { showAlert('danger', resp ? resp.message : 'Failed to drop column'); }
@@ -769,11 +769,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         if (!nameRegex.test(col)) { showAlert('danger','Invalid column name. Use letters, numbers and underscores, must not start with a number.'); if (input) input.focus(); return; }
                         addBtn.disabled = true;
                         showOverlay();
-                        fetch(window.location.href, {
-                            method: 'POST',
-                            headers: {'Content-Type':'application/x-www-form-urlencoded'},
-                            body: new URLSearchParams({ action: 'add_column', column: col })
-                        }).then(function(r){ return r.json(); }).then(function(resp){
+                        var fd2 = new FormData(); fd2.append('action','add_column'); fd2.append('column', col);
+                        fetch(window.location.pathname + window.location.search, { method: 'POST', body: fd2, credentials: 'same-origin' }).then(function(r){ return r.json(); }).then(function(resp){
                             hideOverlay(); addBtn.disabled = false;
                             if (resp && resp.success) { showAlert('success', resp.message); setTimeout(function(){ location.reload(); },700); }
                             else { showAlert('danger', resp ? resp.message : 'Failed to add column'); }
@@ -812,19 +809,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             if (r) fieldRequired[r[1]] = true;
                             if (o && val) fieldOptions[o[1]] = val;
                         }
-                        var payload = new URLSearchParams();
-                        payload.append('action','save');
-                        payload.append('mappings', JSON.stringify(mappings));
-                        payload.append('fieldTypes', JSON.stringify(fieldTypes));
-                        payload.append('fieldRequired', JSON.stringify(fieldRequired));
-                        payload.append('fieldOptions', JSON.stringify(fieldOptions));
+                        var outFd = new FormData();
+                        outFd.append('action','save');
+                        Object.keys(mappings).forEach(function(k){ outFd.append('mappings['+k+']', mappings[k]); });
+                        Object.keys(fieldTypes).forEach(function(k){ outFd.append('fieldTypes['+k+']', fieldTypes[k]); });
+                        Object.keys(fieldOptions).forEach(function(k){ outFd.append('fieldOptions['+k+']', fieldOptions[k]); });
+                        Object.keys(fieldRequired).forEach(function(k){ outFd.append('fieldRequired['+k+']', fieldRequired[k] ? '1' : '0'); });
 
-                        fetch(window.location.href, { method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body: payload })
+                        fetch(window.location.pathname + window.location.search, { method: 'POST', body: outFd, credentials: 'same-origin' })
                         .then(function(r){ return r.json(); }).then(function(resp){
                             hideOverlay();
                             if (resp && resp.success) { showAlert('success', resp.message); setTimeout(function(){ try{ localStorage.setItem('showLoaderUntilPageLoad','1'); }catch(e){}; window.location.href='./erpconsole/manage.php'; },700); }
-                            else { showAlert('danger', resp ? resp.message : 'An error occurred'); }
-                        }).catch(function(){ hideOverlay(); showAlert('danger','An error occurred while saving mappings'); });
+                            else { console.error('Save failed (fallback):', resp); showAlert('danger', resp ? resp.message : 'An error occurred'); }
+                        }).catch(function(err){ hideOverlay(); console.error('Save fetch error (fallback):', err); showAlert('danger','An error occurred while saving mappings'); });
                     });
                 }
             }
