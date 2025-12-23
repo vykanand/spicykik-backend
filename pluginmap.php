@@ -115,6 +115,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
     $action = $_POST['action'];
 
+    // Temporary debug logging: record POST payloads and responses
+    // Writes to both a file and php://stdout/php://stderr so container logs capture entries
+    function _pm_log($data) {
+        $file = __DIR__ . '/pluginmap-debug.log';
+        $entry = '[' . date('Y-m-d H:i:s') . '] ' . json_encode($data, JSON_UNESCAPED_SLASHES) . "\n";
+        // write to local debug file (if writable)
+        @file_put_contents($file, $entry, FILE_APPEND | LOCK_EX);
+        // write to container stdout/stderr so Docker / cloud logging captures it
+        @file_put_contents('php://stdout', $entry, FILE_APPEND);
+        @file_put_contents('php://stderr', $entry, FILE_APPEND);
+        // also send to PHP error log
+        @error_log(trim($entry));
+    }
+    try { _pm_log(array('event' => 'post_received', 'action' => $action, 'post' => $_POST)); } catch(Exception $e) {}
+
     if ($action === 'save') {
         $mappings = isset($_POST['mappings']) ? $_POST['mappings'] : array();
         $fieldTypes = isset($_POST['fieldTypes']) ? $_POST['fieldTypes'] : array();
@@ -174,10 +189,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         call_user_func_array(array($stmt, 'bind_param'), $refs);
 
         if ($stmt->execute()) {
-            echo json_encode(array('success' => true, 'message' => 'Field configurations saved successfully'));
+            $redirect = 'https://' . $_SERVER['HTTP_HOST'] . '/erpconsole/manage.php';
+            $resp = array('success' => true, 'message' => 'Field configurations saved successfully', 'redirect' => $redirect);
         } else {
-            echo json_encode(array('success' => false, 'message' => 'Failed to save configurations: ' . $stmt->error));
+            $resp = array('success' => false, 'message' => 'Failed to save configurations: ' . $stmt->error);
         }
+        try { _pm_log(array('event' => 'save_response', 'response' => $resp)); } catch (
+        Exception $e) {}
+        echo json_encode($resp);
         $stmt->close();
         exit;
     }
@@ -660,10 +679,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         success: function(response) {
                             if (response && response.success) {
                                 showAlert('success', response.message);
-                                setTimeout(function() {
-                                    try { localStorage.setItem('showLoaderUntilPageLoad', '1'); } catch (e) {}
-                                    window.location.href = './erpconsole/manage.php';
-                                }, 700);
+                                // ensure overlay is hidden before navigating
+                                hideLoader();
+                                // set loader flag for the target page, then attempt top-level navigation using secure URL
+                                try { localStorage.setItem('showLoaderUntilPageLoad', '1'); } catch (e) {}
+                                (function(){
+                                    var target = (response && response.redirect) ? response.redirect : ('https://' + window.location.host + '/erpconsole/manage.php');
+                                    try { window.top.location.href = target; } catch (e) { window.location.href = target; }
+                                })();
+                                // safety: if navigation didn't happen for some reason, clear loader and re-enable
+                                setTimeout(function() { $('.btn-save').prop('disabled', false); hideLoader(); }, 5000);
                             } else {
                                 console.error('Save response error:', response);
                                 showAlert('danger', response && response.message ? response.message : 'Failed to save configurations');
@@ -818,9 +843,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                         fetch(window.location.pathname + window.location.search, { method: 'POST', body: outFd, credentials: 'same-origin' })
                         .then(function(r){ return r.json(); }).then(function(resp){
+                            // hide overlay before navigation
                             hideOverlay();
-                            if (resp && resp.success) { showAlert('success', resp.message); setTimeout(function(){ try{ localStorage.setItem('showLoaderUntilPageLoad','1'); }catch(e){}; window.location.href='./erpconsole/manage.php'; },700); }
-                            else { console.error('Save failed (fallback):', resp); showAlert('danger', resp ? resp.message : 'An error occurred'); }
+                            if (resp && resp.success) {
+                                showAlert('success', resp.message);
+                                try{ localStorage.setItem('showLoaderUntilPageLoad','1'); }catch(e){}
+                                (function(){
+                                    var target = (resp && resp.redirect) ? resp.redirect : ('https://' + window.location.host + '/erpconsole/manage.php');
+                                    try { window.top.location.href = target; } catch(e) { window.location.href = target; }
+                                })();
+                                // safety: if navigation didn't occur, clear overlay after timeout
+                                setTimeout(function(){ hideOverlay(); }, 5000);
+                            } else {
+                                console.error('Save failed (fallback):', resp);
+                                showAlert('danger', resp ? resp.message : 'An error occurred');
+                            }
                         }).catch(function(err){ hideOverlay(); console.error('Save fetch error (fallback):', err); showAlert('danger','An error occurred while saving mappings'); });
                     });
                 }
