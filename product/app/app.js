@@ -1574,45 +1574,87 @@ app.controller("mtctrl", function ($scope, $http, $location, $uibModal, $q, $tim
     // Open modal first
     var modalPromise = emodalPopup();
 
+    // Helper to find value in convertedData using multiple key variants
+    var findValueInData = function(inputName, convertedData) {
+      // Try exact match first
+      if (convertedData.hasOwnProperty(inputName)) {
+        return { found: true, key: inputName, value: convertedData[inputName] };
+      }
+      
+      // Try lowercase
+      var lowerName = inputName.toLowerCase();
+      if (convertedData.hasOwnProperty(lowerName)) {
+        return { found: true, key: lowerName, value: convertedData[lowerName] };
+      }
+      
+      // Try with underscores instead of spaces
+      var underscoreName = inputName.replace(/\s+/g, '_');
+      if (convertedData.hasOwnProperty(underscoreName)) {
+        return { found: true, key: underscoreName, value: convertedData[underscoreName] };
+      }
+      
+      // Try lowercase with underscores
+      var lowerUnderscoreName = inputName.toLowerCase().replace(/\s+/g, '_');
+      if (convertedData.hasOwnProperty(lowerUnderscoreName)) {
+        return { found: true, key: lowerUnderscoreName, value: convertedData[lowerUnderscoreName] };
+      }
+      
+      // Try camelCase variant
+      var camelName = inputName.replace(/_([a-z])/g, function(g) { return g[1].toUpperCase(); });
+      if (convertedData.hasOwnProperty(camelName)) {
+        return { found: true, key: camelName, value: convertedData[camelName] };
+      }
+      
+      // Try case-insensitive search through all keys
+      var keys = Object.keys(convertedData);
+      for (var i = 0; i < keys.length; i++) {
+        if (keys[i].toLowerCase() === lowerName ||
+            keys[i].toLowerCase().replace(/\s+/g, '_') === lowerUnderscoreName ||
+            keys[i].replace(/\s+/g, '_').toLowerCase() === lowerUnderscoreName) {
+          return { found: true, key: keys[i], value: convertedData[keys[i]] };
+        }
+      }
+      
+      return { found: false, key: null, value: undefined };
+    };
+
     // Wait for modal to be fully rendered
     modalPromise.rendered.then(function () {
-      // Ensure Angular picks up the model values after modal compilation
-      try {
-        $timeout(function() {
-          // reassign to a shallow copy to force watchers to re-evaluate and update inputs
-          $scope.edls = angular.copy($scope.edls || {});
-        }, 0);
-      } catch (e) {}
+      console.log('Edit modal rendered, populating fields...');
+      var populatedCount = 0;
+      var skippedCount = 0;
+      var missingCount = 0;
+      
       $("#edtfrm")
-        .find("input")
+        .find("input, textarea, select")
         .each(function () {
           var rawName = $(this).attr("name") || '';
-          var fieldName = rawName.toLowerCase().replace(/ /g, "_");
-          // Resolve value robustly: try multiple key variants and a normalized-match fallback
-          var val;
-          var tryKeys = [rawName, rawName.toLowerCase(), fieldName, rawName.replace(/_/g, ' '), rawName.toLowerCase().replace(/_/g, ' ')];
-          for (var k = 0; k < tryKeys.length; k++) {
-            if (typeof convertedData[tryKeys[k]] !== 'undefined') {
-              val = convertedData[tryKeys[k]];
-              break;
-            }
+          if (!rawName) {
+            console.warn('Skipping input with no name attribute');
+            skippedCount++;
+            return;
           }
-          if (typeof val === 'undefined') {
-            // final fallback: normalize keys by removing non-alphanumerics and compare
-            var targetNorm = rawName.toLowerCase().replace(/[^a-z0-9]/g, '');
-            for (var kk in convertedData) {
-              if (!convertedData.hasOwnProperty(kk)) continue;
-              var kkNorm = kk.toLowerCase().replace(/[^a-z0-9]/g, '');
-              if (kkNorm === targetNorm) {
-                val = convertedData[kk];
-                break;
-              }
-            }
+          
+          // Try to find value using multiple key variants
+          var result = findValueInData(rawName, convertedData);
+          var val = result.value;
+          
+          if (!result.found) {
+            console.warn('Field "' + rawName + '" not found in convertedData. Available keys:', Object.keys(convertedData));
+            missingCount++;
           }
+          
           // determine effective type from fieldTypeMap or input attribute
-          var type = ($scope.fieldTypeMap && ($scope.fieldTypeMap[rawName] || $scope.fieldTypeMap[rawName.toLowerCase()] || $scope.fieldTypeMap[fieldName])) || $(this).attr('type') || 'text';
+          var type = ($scope.fieldTypeMap && ($scope.fieldTypeMap[rawName] || $scope.fieldTypeMap[rawName.toLowerCase()] || $scope.fieldTypeMap[rawName.toLowerCase().replace(/\s+/g, '_')])) || $(this).attr('type') || $(this).prop('tagName').toLowerCase() === 'textarea' ? 'textarea' : $(this).prop('tagName').toLowerCase() === 'select' ? 'select' : 'text';
+          
+          console.log('Populating field:', rawName, 'Type:', type, 'Value:', val, 'Found as:', result.key);
 
-          // Data is already converted by convertObjectFields, set Angular model so ng-model bindings update
+          // Set value in $scope.edls using the raw input name (the key used in the template)
+          if (result.found && typeof val !== 'undefined') {
+            $scope.edls[rawName] = val;
+          }
+
+          // Data is already converted by convertObjectFields, just set values appropriately
           if (type === 'date' || type === 'datetime-local') {
             // Date fields expect Date objects
             if (val instanceof Date) {
@@ -1622,16 +1664,31 @@ app.controller("mtctrl", function ($scope, $http, $location, $uibModal, $q, $tim
                 } else {
                   $scope.edls[rawName] = val;
                 }
+                $(this).val(''); // Let Angular binding handle it
+                populatedCount++;
               } catch (e) {
-                // fallback to DOM if Angular apply fails
                 $(this).val(val);
+                populatedCount++;
               }
-            } else {
-              if (!$scope.$$phase) { $scope.$apply(function(){ $scope.edls[rawName] = typeof val === 'undefined' ? '' : val; }); } else { $scope.edls[rawName] = typeof val === 'undefined' ? '' : val; }
+            } else if (val) {
+              $(this).val(val);
+              populatedCount++;
             }
           } else if (type === 'time' || type === 'month' || type === 'week') {
             // Time/month/week fields expect strings
-            if (!$scope.$$phase) { $scope.$apply(function(){ $scope.edls[rawName] = typeof val === 'undefined' ? '' : val; }); } else { $scope.edls[rawName] = typeof val === 'undefined' ? '' : val; }
+            if (val !== null && typeof val !== 'undefined') {
+              $(this).val(val);
+              populatedCount++;
+              try {
+                if (!$scope.$$phase) {
+                  $scope.$apply(function () { $scope.edls[rawName] = val; });
+                } else {
+                  $scope.edls[rawName] = val;
+                }
+              } catch (e) {
+                // ignore
+              }
+            }
           } else if (type === 'number' || type === 'range') {
             // Number fields expect numbers
             var numVal = (typeof val === 'number') ? val : Number(val);
@@ -1642,17 +1699,47 @@ app.controller("mtctrl", function ($scope, $http, $location, $uibModal, $q, $tim
                 } else {
                   $scope.edls[rawName] = numVal;
                 }
+                $(this).val(numVal);
+                populatedCount++;
               } catch (e) {
                 $(this).val(val);
+                populatedCount++;
               }
-            } else {
-              if (!$scope.$$phase) { $scope.$apply(function(){ $scope.edls[rawName] = typeof val === 'undefined' ? '' : val; }); } else { $scope.edls[rawName] = typeof val === 'undefined' ? '' : val; }
+            } else if (val !== null && typeof val !== 'undefined') {
+              $(this).val(val);
+              populatedCount++;
+            }
+          } else if (type === 'select') {
+            // Select dropdowns
+            if (val !== null && typeof val !== 'undefined') {
+              $(this).val(val);
+              populatedCount++;
+            }
+          } else if (type === 'textarea') {
+            // Textareas
+            if (val !== null && typeof val !== 'undefined') {
+              $(this).val(val);
+              populatedCount++;
             }
           } else {
             // All other fields (text, email, url, etc.) expect strings
-            if (!$scope.$$phase) { $scope.$apply(function(){ $scope.edls[rawName] = typeof val === 'undefined' ? '' : val; }); } else { $scope.edls[rawName] = typeof val === 'undefined' ? '' : val; }
+            if (val !== null && typeof val !== 'undefined') {
+              $(this).val(val);
+              populatedCount++;
+            }
           }
         });
+      
+      console.log('Field population complete. Populated:', populatedCount, 'Missing:', missingCount, 'Skipped:', skippedCount);
+      
+      // Force Angular digest to update any ng-model bindings
+      try {
+        if (!$scope.$$phase) {
+          $scope.$apply();
+        }
+      } catch (e) {
+        console.log('$apply after population (ignore if already in digest):', e.message);
+      }
     });
 
     modalPromise.result
