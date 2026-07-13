@@ -1,0 +1,66 @@
+# Version control
+.git
+.gitignore
+
+# Node modules and dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# Testing and CI
+test-results
+playwright-report
+screenshots
+.nyc_output
+coverage
+
+# Build artifacts
+dist
+build
+*.log
+debug-logs.json
+errors.json
+test-results.json
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+*.md
+docs.html
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp
+temp
+*.tmp
+
+# Uploads (handled by volume)
+uploads/*
+
+# Test files
+aitest
+e2e
+tests
+
+# SQL dumps
+*.sql
+
+# Other large/unnecessary files
+appmarket/testplugin
+appmarket/Gigafile*
+playwright.config.js
+playwright.config.ts

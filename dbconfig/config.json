@@ -1,0 +1,67 @@
+{
+  "_comment": "Universal Database Configuration Template - MySQL/MariaDB/TiDB",
+  "version": "1.0",
+  "database_type": "mysql",
+  "slug": "dvp",
+  "organization": {
+    "name": "spicykik",
+    "admin_email": "admin@onestopsolution.com",
+    "status": "active",
+    "created_at": "2026-05-04T00:00:00Z",
+    "updated_at": "2026-05-04T00:00:00Z"
+  },
+  "database": {
+    "driver": "mysql",
+    "host": "gateway01.ap-southeast-1.prod.aws.tidbcloud.com",
+    "port": 3306,
+    "database": "spicykik",
+    "username": "3dFPZHrtmBY8SeP.root",
+    "password": "rxmNOWVp994MPlW5",
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_unicode_ci",
+    "ssl": {
+      "enabled": true,
+      "ca_cert": "",
+      "client_cert": "",
+      "client_key": "",
+      "verify_server": true,
+      "ca_file_path": "ca.pem",
+      "client_cert_file_path": "client-cert.pem",
+      "client_key_file_path": "client-key.pem",
+      "cipher": ""
+    },
+    "connection_pool": {
+      "enabled": true,
+      "min_connections": 2,
+      "max_connections": 20,
+      "idle_timeout": 30,
+      "max_lifetime": 7200
+    },
+    "options": {
+      "persistent": true,
+      "connect_timeout": 2,
+      "read_timeout": 10,
+      "write_timeout": 10
+    }
+  },
+  "redis": {
+    "enabled": true,
+    "host": "74.208.34.96",
+    "port": 6379,
+    "username": "default",
+    "password": "cK0iMSsXzHDX9BbfjfMI5xhIy0RFo0pofaiTHKUVs2bU1P6WcypibVwVe7G80FzH",
+    "database": 0,
+    "prefix": "org:{slug}:",
+    "timeout": 0.5
+  },
+  "cache": {
+    "metadata_ttl": 14400,
+    "record_ttl": 3600,
+    "sidebar_ttl": 7200
+  },
+  "ssl_certificates": {
+    "ca_cert_content": "",
+    "client_cert_content": "",
+    "client_key_content": ""
+  }
+}

@@ -21,6 +21,10 @@ RUN a2enmod rewrite headers
 RUN a2dismod mpm_event mpm_worker || true \
     && a2enmod mpm_prefork || true
 
+# Ensure mpm_prefork is the only MPM enabled
+RUN rm -f /etc/apache2/mods-enabled/mpm_*.load /etc/apache2/mods-enabled/mpm_*.conf || true \
+    && a2enmod mpm_prefork
+
 # Create log directory and set permissions
 RUN mkdir -p /var/log/php \
     && chown -R www-data:www-data /var/log/php \
@@ -29,48 +33,23 @@ RUN mkdir -p /var/log/php \
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy PHP configuration
+# Copy PHP configuration (if exists)
 COPY docker/php/custom.ini /usr/local/etc/php/conf.d/custom.ini
 
-# Copy application files
-COPY . /var/www/html/
+# Create necessary directories
+RUN mkdir -p /var/www/html/uploads \
+    && chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 777 /var/www/html
-
-# Create robust entrypoint script to sanitize Apache MPMs and start Apache
+# Create optimized entrypoint script
 RUN cat > /usr/local/bin/docker-entrypoint.sh <<'EOF'
 #!/bin/bash
 set -e
 
-# Make sure web dir permissions are sane
-chown -R www-data:www-data /var/www/html || true
-chmod -R 755 /var/www/html || true
+# Quick permission fix for uploads only (volume-mounted)
+chown -R www-data:www-data /var/www/html/uploads 2>/dev/null || true
 
-# Only sanitize custom/conf files that may have been copied from other systems.
-# Avoid modifying Debian-provided mods-available files.
-for dir in /etc/apache2/conf-enabled /etc/apache2/sites-enabled /etc/apache2/conf-available /etc/apache2/sites-available /etc/apache2/conf.d; do
-    if [ -d "$dir" ]; then
-        for f in $(grep -RIl "LoadModule[[:space:]]\+mpm_" "$dir" 2>/dev/null || true); do
-            sed -i -E "s/^[[:space:]]*(LoadModule[[:space:]]+mpm_[^ ]+)/# \1/" "$f" || true
-        done
-    fi
-done
-
-# Ensure the system's prefork mod file is present and correct (restore if missing/modified)
-cat > /etc/apache2/mods-available/mpm_prefork.load <<'MPM'
-LoadModule mpm_prefork_module /usr/lib/apache2/modules/mod_mpm_prefork.so
-MPM
-
-# Clean any enabled mpm symlinks (we'll enable the correct one below)
-rm -f /etc/apache2/mods-enabled/mpm_*.load /etc/apache2/mods-enabled/mpm_*.conf || true
-
-# Disable other MPMs if enabled and enable prefork
-a2dismod mpm_event mpm_worker || true
-a2enmod mpm_prefork || true
-
-# Start Apache in foreground
+# Start Apache immediately (MPM already configured during build)
 exec apache2-foreground
 EOF
 

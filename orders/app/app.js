@@ -326,7 +326,7 @@ app.controller("mtctrl", function ($scope, $http, $location, $uibModal, $q, $tim
     
     // Helper function to get field type
     $scope.getFieldType = function (fieldName) {
-      if (!$scope.fieldTypeMap) return 'text';
+      if (!$scope.fieldTypeMap || typeof fieldName !== 'string') return 'text';
       const fieldLower = fieldName.toLowerCase();
       const fieldUnderscore = fieldLower.replace(/ /g, '_');
       return $scope.fieldTypeMap[fieldName] || 

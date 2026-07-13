@@ -12,7 +12,7 @@ if (isset($_REQUEST["register"])) {
   $email=$_REQUEST['email'];
   $phone=$_REQUEST['phone'];
   $address=$_REQUEST['address'];
-  $type=$_REQUEST['type'];
+   $role=$_REQUEST['role'] ?? 'admin';
 
   $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
     $charactersLength = strlen($characters);
@@ -21,7 +21,7 @@ if (isset($_REQUEST["register"])) {
         $randomString .= $characters[rand(0, $charactersLength - 1)];
     }
   $apikey = $randomString;
-  $sql = "INSERT INTO users (name,password,apikey,phone,email,address,type) VALUES ('$name','$password','$apikey','$phone','$email','$address','$type')";
+  $sql = "INSERT INTO users (name,password,apikey,phone,email,address,role) VALUES ('$name','$password','$apikey','$phone','$email','$address','$role')";
   $result = mysqli_query($db,$sql)or die(mysqli_error($db));
   if($result){
 $message = array("response" => "success");

@@ -3,8 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      cache_from:
-        - "${COMPOSE_PROJECT_NAME}-web:latest"
     image: "${COMPOSE_PROJECT_NAME}-web:latest"
     restart: unless-stopped
     ports:
